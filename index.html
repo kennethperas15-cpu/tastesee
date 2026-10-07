@@ -184,9 +184,12 @@
 <!-- SETTINGS -->
 <dialog id="settingsDlg" class="rounded-xl p-4 sm:p-5 w-[min(480px,calc(100vw-2rem))]">
   <div class="font-black">Supabase connection</div>
-  <p class="text-xs text-stone-500 mt-1">Leave blank = local demo mode (localStorage). Connect Supabase for shared orders. Run <code>supabase/schema.sql</code> first.</p>
-  <input id="sbUrl" placeholder="https://xyz.supabase.co" class="border rounded px-2 py-2 text-sm w-full mt-3" />
-  <input id="sbKey" placeholder="anon public key" class="border rounded px-2 py-2 text-sm w-full mt-2" />
+  <p class="text-xs text-stone-500 mt-1">Project URL is pre-filled. You only need the <b>anon public key</b>: Supabase dashboard → your project → <b>Settings → API</b> → copy the <b>anon public</b> key → paste below → Save &amp; reload. Leave both blank for local demo mode.</p>
+  <div id="sbStatus" class="text-xs mt-2 px-2 py-1.5 rounded bg-stone-100 text-stone-500 break-all"></div>
+  <label class="text-[11px] font-bold text-stone-400 mt-3 block">PROJECT URL</label>
+  <input id="sbUrl" placeholder="https://xyz.supabase.co" class="border rounded px-2 py-2 text-sm w-full mt-1" />
+  <label class="text-[11px] font-bold text-stone-400 mt-2 block">ANON PUBLIC KEY (paste from dashboard)</label>
+  <input id="sbKey" placeholder="eyJhbGciOi..." class="border rounded px-2 py-2 text-sm w-full mt-1" />
   <div class="flex gap-2 mt-3">
     <button onclick="saveKeys()" class="flex-1 bg-stone-900 text-white rounded py-2 text-sm font-bold">Save &amp; reload</button>
     <button onclick="localStorage.removeItem('ts_sb_url');localStorage.removeItem('ts_sb_key');location.reload()" class="border rounded py-2 px-3 text-sm">Use local</button>
@@ -251,7 +254,11 @@ function unit(base,size,icing,top){
 let cart = [], activePool = null, pools = [], custom = null, customQty = 1, customSize = "Regular";
 
 async function init(){
-  $("sbUrl").value = localStorage.getItem("ts_sb_url")||""; $("sbKey").value = localStorage.getItem("ts_sb_key")||"";
+  $("sbUrl").value = localStorage.getItem("ts_sb_url") || window.TASTESEE_SUPABASE_URL || "";
+  $("sbKey").value = localStorage.getItem("ts_sb_key") || window.TASTESEE_SUPABASE_ANON_KEY || "";
+  $("sbStatus").textContent = TasteSeeDB.mode() === "supabase"
+    ? "Connected: " + (localStorage.getItem("ts_sb_url") || window.TASTESEE_SUPABASE_URL)
+    : "Currently: local demo mode. Paste the anon key above to go live.";
   renderMenu(); await renderPools(); renderCart(); observeReveals();
   setTimeout(()=>{ if($("cravingText").textContent.includes("warming up")) $("cravingText").textContent = "Freshly baked in small batches, ready when you are."; }, 5000);
 }

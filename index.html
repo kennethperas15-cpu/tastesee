@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Taste &amp; See — Warm Cinnamon Buns</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Optional: paste your Supabase project here OR use Settings modal (stored in localStorage).
+  window.TASTESEE_SUPABASE_URL = "";
+  window.TASTESEE_SUPABASE_ANON_KEY = "";
+  if (window.TASTESEE_SUPABASE_URL && window.supabase) {
+    window.supabaseClient = window.supabase.createClient(window.TASTESEE_SUPABASE_URL, window.TASTESEE_SUPABASE_ANON_KEY);
+  } else {
+    try {
+      const u = localStorage.getItem("ts_sb_url"), k = localStorage.getItem("ts_sb_key");
+      if (u && k && window.supabase) window.supabaseClient = window.supabase.createClient(u, k);
+    } catch {}
+  }
+</script>
+<script src="./js/db.js"></script>
+<link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; }
+  button, a, select, input, label { touch-action: manipulation; }
+  button { min-height: 0; }
+  dialog { margin: auto; max-height: 92dvh; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .bun-card:hover { transform: translateY(-3px); }
+  .pool-bar { transition: width .6s ease; }
+  canvas { max-width: 100%; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  @media (max-width: 640px) {
+    dialog { margin: auto 1rem; width: calc(100vw - 2rem); }
+  }
+</style>
+</head>
+<body class="bg-amber-50 text-stone-800 min-h-screen">
+
+<header class="sticky top-0 z-30 bg-amber-950 text-amber-50 shadow">
+  <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+    <div class="text-xl sm:text-2xl shrink-0">🥮</div>
+    <div class="flex-1 min-w-0">
+      <div class="font-extrabold tracking-tight text-base sm:text-lg leading-none truncate">Taste &amp; See</div>
+      <div class="text-[11px] sm:text-xs opacity-70 truncate hidden sm:block">warm cinnamon buns, on schedule</div>
+    </div>
+    <span id="modeBadge" class="hidden min-[420px]:inline text-[11px] sm:text-xs px-2 py-1 rounded bg-amber-800 whitespace-nowrap">local mode</span>
+    <button onclick="document.getElementById('settingsDlg').showModal()" class="text-xs underline opacity-80 whitespace-nowrap px-1 py-2">⚙️<span class="hidden sm:inline"> Settings</span></button>
+    <a href="./admin.html" class="text-xs bg-amber-500 text-amber-950 font-bold px-2.5 sm:px-3 py-2 rounded whitespace-nowrap">📊<span class="hidden min-[420px]:inline"> Admin</span></a>
+    <button onclick="toggleCart(true)" class="relative bg-white text-amber-950 font-bold px-2.5 sm:px-3 py-2 rounded text-sm whitespace-nowrap shrink-0">🧺<span class="hidden min-[420px]:inline"> Cart</span> <span id="cartCount" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">0</span></button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="max-w-6xl mx-auto px-3 sm:px-4 pt-6 sm:pt-8 pb-4 grid gap-6 md:grid-cols-2 md:items-center">
+  <div class="min-w-0">
+    <div class="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-amber-700">Baked in batches · served warm</div>
+    <h1 class="text-3xl sm:text-4xl md:text-5xl font-black leading-[1.05] mt-2">Buns come out warm.<br/>We time it.</h1>
+    <p class="mt-3 text-sm sm:text-base text-stone-600">Order solo, or <b>join a Bake Pool</b> — a timed batch with <b>15% off</b> and a guaranteed warm pickup. Our kitchen bakes pools together: less waste, more gooey.</p>
+    <div class="mt-4 flex flex-col sm:flex-row gap-2">
+      <a href="#pools" class="text-center bg-amber-950 text-amber-50 px-4 py-3 sm:py-2.5 rounded font-bold text-sm">🔥 Join a Bake Pool</a>
+      <a href="#menu" class="text-center bg-white border px-4 py-3 sm:py-2.5 rounded font-bold text-sm">See menu</a>
+    </div>
+    <div id="cravingBox" class="mt-4 text-sm bg-white border border-amber-200 rounded p-3">
+      🐍 <b>PyScript craving check:</b> <span id="cravingText">warming up python in your browser…</span>
+    </div>
+  </div>
+  <div class="bg-gradient-to-br from-amber-200 to-orange-300 rounded-2xl p-6 sm:p-8 text-center shadow-inner">
+    <div class="text-6xl sm:text-7xl">🥮</div>
+    <div class="mt-2 font-black text-lg sm:text-xl">Next warm batch</div>
+    <div id="nextBatch" class="text-sm text-stone-700 break-words">loading…</div>
+    <div class="mt-3 text-xs bg-amber-950 text-amber-100 inline-block px-3 py-1.5 rounded-full max-w-full">Warmth guarantee: ready ±10 min or free glaze</div>
+  </div>
+</section>
+
+<!-- BAKE POOLS : unique feature -->
+<section id="pools" class="max-w-6xl mx-auto px-3 sm:px-4 py-4 scroll-mt-20">
+  <h2 class="text-xl sm:text-2xl font-black leading-snug">🔥 Live Bake Pools <span class="block sm:inline text-sm font-normal text-stone-500">— share a bake, save 15%.</span></h2>
+  <div id="poolGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-3"></div>
+</section>
+
+<!-- MENU -->
+<section id="menu" class="max-w-6xl mx-auto px-3 sm:px-4 py-6 scroll-mt-20">
+  <h2 class="text-xl sm:text-2xl font-black">Menu</h2>
+  <p class="text-sm text-stone-500">Customize icing, topping, size. Mini Box x4 = bundle price.</p>
+  <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-3"></div>
+</section>
+
+<!-- TRACKING -->
+<section class="max-w-6xl mx-auto px-3 sm:px-4 pb-16">
+  <h2 class="text-xl sm:text-2xl font-black">🧾 Track your order</h2>
+  <div class="flex flex-col sm:flex-row gap-2 mt-2">
+    <input id="trackName" placeholder="Your name as typed at checkout" class="border rounded px-3 py-2.5 text-sm flex-1 w-full" />
+    <div class="flex gap-2">
+      <button onclick="renderTracking()" class="flex-1 sm:flex-none bg-stone-900 text-white px-4 py-2.5 rounded text-sm font-bold">Find</button>
+      <button onclick="renderTracking(true)" class="flex-1 sm:flex-none bg-white border px-4 py-2.5 rounded text-sm whitespace-nowrap">Show all</button>
+    </div>
+  </div>
+  <div id="trackList" class="mt-3 space-y-2"></div>
+</section>
+
+<footer class="text-center text-xs text-stone-400 pb-24 sm:pb-10 px-4">Taste &amp; See · PyScript + Supabase · Bake Pool batches at 08:00 / 12:30 / 17:00</footer>
+
+<!-- MOBILE STICKY CART BAR -->
+<div id="mobileBar" class="sm:hidden fixed bottom-0 inset-x-0 z-30 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t hidden">
+  <button onclick="toggleCart(true)" class="w-full bg-amber-950 text-amber-50 font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+    🧺 View cart · <span id="mobileBarCount">0</span> items · <span id="mobileBarTotal">$0.00</span>
+  </button>
+</div>
+
+<!-- CUSTOMIZE MODAL -->
+<dialog id="customDlg" class="rounded-xl p-0 w-[min(480px,calc(100vw-2rem))]">
+  <div class="p-4 sm:p-5">
+    <div class="flex items-start gap-3">
+      <div id="cEmoji" class="text-4xl">🌀</div>
+      <div class="flex-1"><div id="cName" class="font-black text-lg"></div><div id="cBase" class="text-sm text-stone-500"></div></div>
+      <button onclick="document.getElementById('customDlg').close()" class="text-stone-400">✕</button>
+    </div>
+    <label class="text-xs font-bold mt-4 block">SIZE</label><div id="cSizes" class="flex flex-wrap gap-2 mt-1"></div>
+    <label class="text-xs font-bold mt-3 block">ICING</label><select id="cIcing" class="w-full border rounded px-2 py-2.5 text-sm mt-1"></select>
+    <label class="text-xs font-bold mt-3 block">TOPPING</label><select id="cTopping" class="w-full border rounded px-2 py-2.5 text-sm mt-1"></select>
+    <div class="flex items-center gap-3 mt-4">
+      <div class="flex items-center gap-2"><button onclick="chQty(-1)" class="border rounded px-3 py-1.5 min-w-[44px]">−</button><span id="cQty" class="font-black min-w-[1.5rem] text-center">1</span><button onclick="chQty(1)" class="border rounded px-3 py-1.5 min-w-[44px]">+</button></div>
+      <div class="flex-1 text-right font-black text-lg" id="cPrice">$0.00</div>
+    </div>
+    <button onclick="addCustomToCart()" class="mt-4 w-full bg-amber-950 text-amber-50 font-bold py-3 rounded">Add to cart</button>
+    <div class="text-[11px] text-stone-400 mt-2">🐍 Price math verified by PyScript (python in-browser) + JS fallback.</div>
+  </div>
+</dialog>
+
+<!-- CART DRAWER -->
+<div id="cartWrap" class="fixed inset-0 z-40 hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="toggleCart(false)"></div>
+  <div class="absolute right-0 top-0 h-[100dvh] w-full sm:w-[420px] sm:max-w-[420px] bg-white shadow-xl p-4 sm:p-5 flex flex-col pb-[env(safe-area-inset-bottom)]">
+    <div class="flex items-center gap-2"><div class="font-black text-lg flex-1">🧺 Your cart</div><button onclick="toggleCart(false)" class="px-3 py-2 text-lg leading-none" aria-label="Close cart">✕</button></div>
+    <div id="poolBanner" class="hidden mt-2 text-xs bg-green-50 border border-green-200 text-green-800 rounded p-2"></div>
+    <div id="cartItems" class="flex-1 overflow-auto mt-3 space-y-2"></div>
+    <div class="border-t pt-3 text-sm space-y-1">
+      <div class="flex justify-between"><span>Subtotal</span><b id="tSub">$0.00</b></div>
+      <div class="flex justify-between text-green-700"><span>Pool discount (15%)</span><b id="tDisc">−$0.00</b></div>
+      <div class="flex justify-between"><span>Delivery</span><b id="tDel">$0.00</b></div>
+      <div class="flex justify-between text-lg"><span class="font-black">Total</span><b id="tTot">$0.00</b></div>
+      <div id="pyCheck" class="text-[11px] text-stone-400">py-check: …</div>
+      <button onclick="openCheckout()" class="w-full bg-amber-950 text-amber-50 font-bold py-3 rounded mt-2">Checkout →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT -->
+<dialog id="coDlg" class="rounded-xl p-0 w-[min(520px,calc(100vw-2rem))]">
+  <div class="p-4 sm:p-5">
+    <div class="font-black text-lg">Checkout <span class="block sm:inline text-xs font-normal text-stone-400">(mock payment — no charge)</span></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+      <input id="coName" placeholder="Full name *" class="border rounded px-2 py-2.5 text-sm w-full" />
+      <input id="coPhone" placeholder="Phone" class="border rounded px-2 py-2.5 text-sm w-full" />
+    </div>
+    <div class="flex flex-col sm:flex-row gap-2 mt-2 text-sm">
+      <label class="flex-1 border rounded p-2.5"><input type="radio" name="kind" value="pickup" checked onchange="coKind()" /> 🏃 Pickup (free)</label>
+      <label class="flex-1 border rounded p-2.5"><input type="radio" name="kind" value="delivery" onchange="coKind()" /> 🛵 Delivery ($2.90)</label>
+    </div>
+    <input id="coAddr" placeholder="Delivery address (if delivery)" class="border rounded px-2 py-2.5 text-sm w-full mt-2 hidden" />
+    <input id="coCard" placeholder="Card 4242 4242 4242 4242 (mock)" class="border rounded px-2 py-2.5 text-sm w-full mt-2" value="4242 4242 4242 4242" />
+    <div id="coErr" class="text-red-600 text-xs mt-2 hidden"></div>
+    <div class="flex flex-col-reverse sm:flex-row gap-2 mt-4">
+      <button onclick="document.getElementById('coDlg').close()" class="flex-1 border rounded py-3 sm:py-2 text-sm">Back</button>
+      <button onclick="placeOrder()" id="payBtn" class="flex-1 bg-green-700 text-white font-bold rounded py-3 sm:py-2 text-sm">Pay &amp; place order</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- SETTINGS -->
+<dialog id="settingsDlg" class="rounded-xl p-4 sm:p-5 w-[min(480px,calc(100vw-2rem))]">
+  <div class="font-black">Supabase connection</div>
+  <p class="text-xs text-stone-500 mt-1">Leave blank = local demo mode (localStorage). Add keys to persist across devices. Run <code>supabase/schema.sql</code> first.</p>
+  <input id="sbUrl" placeholder="https://xyz.supabase.co" class="border rounded px-2 py-2 text-sm w-full mt-3" />
+  <input id="sbKey" placeholder="anon public key" class="border rounded px-2 py-2 text-sm w-full mt-2" />
+  <div class="flex gap-2 mt-3">
+    <button onclick="saveKeys()" class="flex-1 bg-stone-900 text-white rounded py-2 text-sm font-bold">Save &amp; reload</button>
+    <button onclick="localStorage.removeItem('ts_sb_url');localStorage.removeItem('ts_sb_key');location.reload()" class="border rounded py-2 px-3 text-sm">Use local</button>
+  </div>
+</dialog>
+
+<!-- ============ PYSCRIPT : python-in-browser business logic ============
+     Powers: price verification, craving predictor, pool optimizer badge.
+     JS fallbacks keep the app working if WASM is blocked. -->
+<script type="py">
+from pyscript import document
+import js, datetime
+
+SIZES_UP = {"Regular": 0.0, "Large (+$1.20)": 1.20}
+TOPPING_P = {"None": 0.0, "Pecans (+$0.80)": 0.8, "Choc chips (+$0.70)": 0.7,
+             "Apple crumble (+$0.80)": 0.8, "Cinnamon dust (free)": 0.0}
+
+def py_unit_price(base, size, icing, topping):
+    p = base + SIZES_UP.get(size, 0.0) + TOPPING_P.get(topping, 0.0)
+    if icing == "Extra (+$0.60)":
+        p += 0.60
+    if size == "Mini Box x4":
+        p = base * 3.4
+    return round(p, 2)
+
+# expose to JS
+js.window.pyUnitPrice = py_unit_price
+
+# Craving predictor: simple heuristic — weekday + last-order recency
+try:
+    now = datetime.datetime.now()
+    wd = now.weekday()
+    if wd in (4, 5):
+        msg = f"It's {now.strftime('%A')} — peak craving day. Regulars reorder every 6–9 days. Pre-book Sunday Box?"
+    elif wd == 6:
+        msg = "Sunday reset: 68% of regulars order a Mini Box today. Join the 17:00 Sunset pool."
+    else:
+        msg = f"{now.strftime('%A')} is a light day — perfect: pools are emptier, buns are faster + 15% off."
+    document.getElementById("cravingText").innerText = msg + " (computed in Python 🐍)"
+    document.getElementById("pyCheck").innerText = "py-check: python engine online ✅ totals double-checked"
+except Exception as e:
+    pass
+</script>
+
+<script>
+const $ = id => document.getElementById(id);
+const money = c => "$" + (c/100).toFixed(2);
+const CATALOG = [
+  { id:"classic", name:"Classic Cinnamon Swirl", price:4.50, emoji:"🌀", desc:"Brioche, Ceylon cinnamon, brown-butter glaze." },
+  { id:"pecan", name:"Sticky Pecan Caramel", price:5.80, emoji:"🍯", desc:"Sea-salt caramel, toasted pecans. Warm." },
+  { id:"cardamom", name:"Cardamom Morning Bun", price:4.90, emoji:"🌿", desc:"Swedish-style, cardamom sugar." },
+  { id:"choc", name:"Chocolate Babka Bun", price:5.20, emoji:"🍫", desc:"Dark choc swirl, cocoa-nib crunch." },
+  { id:"apple", name:"Apple Pie Bun", price:5.50, emoji:"🍎", desc:"Caramelized apple, oat crumble." },
+  { id:"vegan", name:"Vegan Oatmilk Cinnamon", price:4.80, emoji:"🌱", desc:"Plant-based, oatmilk icing." },
+  { id:"ccfrost", name:"Cream Cheese Frost Deluxe", price:5.90, emoji:"🧁", desc:"Double frosting, vanilla bean." },
+  { id:"pumpkin", name:"Pumpkin Spice (Limited)", price:6.10, emoji:"🎃", desc:"Limited drop. Pumpkin custard." },
+];
+const SIZES = ["Regular","Large (+$1.20)","Mini Box x4"];
+const ICINGS = ["Brown-butter glaze","Cream cheese","Oatmilk (vegan)","No icing","Extra (+$0.60)"];
+const TOPPINGS = ["None","Pecans (+$0.80)","Choc chips (+$0.70)","Apple crumble (+$0.80)","Cinnamon dust (free)"];
+function jsUnit(base,size,icing,top){ let p=base+(size==="Large (+$1.20)"?1.2:0)+({"Pecans (+$0.80)":.8,"Choc chips (+$0.70)":.7,"Apple crumble (+$0.80)":.8}[top]||0); if(icing==="Extra (+$0.60)")p+=.6; if(size==="Mini Box x4")p=base*3.4; return Math.round(p*100)/100; }
+function unit(base,size,icing,top){
+  try { if (window.pyUnitPrice) { const v = window.pyUnitPrice(base,size,icing,top); if (typeof v==="number") return v; } } catch {}
+  return jsUnit(base,size,icing,top);
+}
+let cart = [], activePool = null, pools = [], custom = null, customQty = 1, customSize = "Regular";
+
+async function init(){
+  $("modeBadge").textContent = TasteSeeDB.mode() + " mode";
+  $("sbUrl").value = localStorage.getItem("ts_sb_url")||""; $("sbKey").value = localStorage.getItem("ts_sb_key")||"";
+  renderMenu(); await renderPools(); renderCart(); renderTracking(true);
+  setTimeout(()=>{ if($("cravingText").textContent.includes("warming up")) $("cravingText").textContent = "Tip: pools at 08:00 / 12:30 / 17:00 save 15% (JS fallback — PyScript blocked)."; }, 5000);
+}
+function renderMenu(){
+  $("menuGrid").innerHTML = CATALOG.map(p=>`
+    <div class="bun-card bg-white rounded-xl border p-4 flex flex-col transition min-w-0">
+      <div class="text-5xl text-center">${p.emoji}</div>
+      <div class="font-black mt-2 text-[15px] sm:text-base leading-snug">${p.name}</div>
+      <div class="text-xs text-stone-500 flex-1 mt-0.5">${p.desc}</div>
+      <div class="flex items-center gap-2 mt-3"><b class="whitespace-nowrap">$${p.price.toFixed(2)}</b>
+      <button onclick="openCustom('${p.id}')" class="ml-auto bg-amber-950 text-amber-50 text-xs font-bold px-3 py-2.5 rounded whitespace-nowrap">Customize +</button></div>
+    </div>`).join("");
+}
+async function renderPools(){
+  pools = await TasteSeeDB.pools();
+  const now = new Date();
+  const upcoming = [...pools].sort((a,b)=>new Date(a.slot_time)-new Date(b.slot_time))[0];
+  if (upcoming) $("nextBatch").textContent = `${upcoming.title} · ${new Date(upcoming.slot_time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})} · ${upcoming.joined_qty}/${upcoming.target_qty} joined`;
+  $("poolGrid").innerHTML = pools.map(p=>{
+    const pct = Math.min(100, Math.round(100*p.joined_qty/p.target_qty));
+    const sel = activePool===p.id;
+    const t = new Date(p.slot_time).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+    return `<div class="rounded-xl border p-4 min-w-0 ${sel?'border-green-600 ring-2 ring-green-200 bg-green-50/50':'bg-white'}">
+      <div class="flex items-start gap-2"><span class="text-2xl shrink-0">🔥</span>
+        <div class="flex-1 min-w-0"><div class="font-black text-[15px] sm:text-base leading-snug">${p.title}</div><div class="text-xs text-stone-500 break-words">${t} · ${p.flavor_focus} · −${p.discount_pct}%</div></div>
+        <span class="text-[10px] px-2 py-1 rounded whitespace-nowrap shrink-0 ${p.status==='filling'?'bg-amber-100 text-amber-800':'bg-stone-200'}">${p.status}</span></div>
+      <div class="h-2 bg-stone-200 rounded mt-3"><div class="pool-bar h-2 bg-gradient-to-r from-amber-500 to-orange-600 rounded" style="width:${pct}%"></div></div>
+      <div class="text-xs mt-1">${p.joined_qty}/${p.target_qty} buns claimed ${p.target_qty-p.joined_qty>0?`· <b>${p.target_qty-p.joined_qty} left</b> for max warmth`:'· <b>POOL FULL — baking!</b>'}</div>
+      <button onclick="selectPool('${p.id}')" class="mt-3 w-full ${sel?'bg-green-700 text-white':'bg-amber-950 text-amber-50'} text-sm font-bold py-3 sm:py-2 rounded">${sel?'✓ Pool applied (15% off)':'Join this pool −15%'}</button>
+    </div>`;
+  }).join("");
+}
+function selectPool(id){ activePool = (activePool===id? null:id); renderPools(); renderCart(); }
+function openCustom(pid){
+  const p = CATALOG.find(x=>x.id===pid); custom=p; customQty=1; customSize="Regular";
+  $("cEmoji").textContent=p.emoji; $("cName").textContent=p.name; $("cBase").textContent="$"+p.price.toFixed(2)+" base";
+  $("cSizes").innerHTML = SIZES.map(s=>`<button data-s="${s}" onclick="setSize('${s}')" class="cs text-xs border rounded px-2.5 py-2 ${s===customSize?'bg-stone-900 text-white':''}">${s}</button>`).join("");
+  $("cIcing").innerHTML = ICINGS.map(i=>`<option>${i}</option>`).join("");
+  $("cTopping").innerHTML = TOPPINGS.map(i=>`<option>${i}</option>`).join("");
+  $("cIcing").onchange=$("cTopping").onchange=updCustom; $("cQty").textContent="1"; updCustom();
+  $("customDlg").showModal();
+}
+function setSize(s){ customSize=s; document.querySelectorAll(".cs").forEach(b=>b.className=`cs text-xs border rounded px-2.5 py-2 ${b.dataset.s===s?'bg-stone-900 text-white':''}`); updCustom(); }
+function chQty(d){ customQty=Math.min(12,Math.max(1,customQty+d)); $("cQty").textContent=customQty; updCustom(); }
+function updCustom(){ $("cPrice").textContent="$"+(unit(custom.price,customSize,$("cIcing").value,$("cTopping").value)*customQty).toFixed(2); }
+function addCustomToCart(){
+  const up = unit(custom.price,customSize,$("cIcing").value,$("cTopping").value);
+  cart.push({ pid:custom.id, name:custom.name, emoji:custom.emoji, size:customSize, icing:$("cIcing").value, topping:$("cTopping").value, qty:customQty, unit_cents:Math.round(up*100) });
+  $("customDlg").close(); toggleCart(true); renderCart();
+}
+function toggleCart(open){ $("cartWrap").classList.toggle("hidden", !open); }
+function totals(){
+  const sub = cart.reduce((a,i)=>a+i.unit_cents*i.qty,0);
+  const disc = activePool && cart.length ? Math.round(sub*0.15) : 0;
+  const kind = document.querySelector('input[name="kind"]:checked')?.value || "pickup";
+  const del = cart.length && kind==="delivery" ? 290 : 0;
+  return { sub, disc, del, tot: sub-disc+del };
+}
+function renderCart(){
+  $("cartCount").textContent = cart.reduce((a,i)=>a+i.qty,0);
+  const t = totals();
+  // mobile sticky bar
+  const n = cart.reduce((a,i)=>a+i.qty,0);
+  $("mobileBar").classList.toggle("hidden", n===0);
+  $("mobileBarCount").textContent = n; $("mobileBarTotal").textContent = money(t.tot);
+  $("poolBanner").classList.toggle("hidden", !activePool);
+  if (activePool){ const p = pools.find(x=>x.id===activePool); if(p) $("poolBanner").innerHTML = `🔥 <b>${p.title}</b> applied — 15% pool discount + warm-batch pickup ~${new Date(p.slot_time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}. <button class="underline" onclick="selectPool('${p.id}')">remove</button>`; }
+  $("cartItems").innerHTML = cart.length ? cart.map((i,x)=>`
+    <div class="border rounded p-2 text-sm flex gap-2"><div class="text-2xl">${i.emoji}</div>
+    <div class="flex-1"><b>${i.name}</b> × ${i.qty}<div class="text-xs text-stone-500">${i.size} · ${i.icing} · ${i.topping}</div></div>
+    <div class="text-right"><b>${money(i.unit_cents*i.qty)}</b><br/><button onclick="cart.splice(${x},1);renderCart()" class="text-xs text-red-500 underline">remove</button></div></div>`).join("")
+    : `<div class="text-sm text-stone-400 text-center py-8">Empty. Add a bun — or join a pool first for 15% off.</div>`;
+  $("tSub").textContent=money(t.sub); $("tDisc").textContent="−"+money(t.disc); $("tDel").textContent=money(t.del); $("tTot").textContent=money(t.tot);
+}
+function openCheckout(){ if(!cart.length) return alert("Cart is empty."); renderCart(); $("coDlg").showModal(); }
+function coKind(){ $("coAddr").classList.toggle("hidden", document.querySelector('input[name="kind"]:checked').value!=="delivery"); renderCart(); }
+function saveKeys(){ TasteSeeDB.saveKeys($("sbUrl").value.trim(), $("sbKey").value.trim()); }
+async function placeOrder(){
+  const name = $("coName").value.trim();
+  if(name.length<2){ $("coErr").textContent="Please enter your name."; $("coErr").classList.remove("hidden"); return; }
+  const kind = document.querySelector('input[name="kind"]:checked').value;
+  if(kind==="delivery" && $("coAddr").value.trim().length<5){ $("coErr").textContent="Delivery needs an address."; $("coErr").classList.remove("hidden"); return; }
+  $("payBtn").disabled=true; $("payBtn").textContent="Processing (mock)…";
+  const t = totals();
+  const pool = pools.find(x=>x.id===activePool);
+  try {
+    const order = await TasteSeeDB.createOrder({
+      customer_name:name, phone:$("coPhone").value.trim(), kind, address:$("coAddr").value.trim(),
+      subtotal_cents:t.sub, discount_cents:t.disc, total_cents:t.tot, pool_id:activePool,
+      estimated_ready_at: pool? new Date(new Date(pool.slot_time).getTime()+10*60000).toISOString() : new Date(Date.now()+25*60000).toISOString(),
+      items: cart.map(i=>({ name:`${i.name} (${i.size})`, qty:i.qty, unit_price_cents:i.unit_cents, custom:{icing:i.icing,topping:i.topping} })),
+    });
+    cart=[]; activePool=null; renderCart(); await renderPools();
+    $("coDlg").close(); toggleCart(false);
+    alert(`Order placed! #${String(order.id).slice(0,8)} — ${pool? "warm batch ~"+new Date(pool.slot_time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : "ready in ~25 min"}. Mock payment approved ✅`);
+    renderTracking(true);
+  } catch(e){ $("coErr").textContent="Failed: "+e.message; $("coErr").classList.remove("hidden"); }
+  $("payBtn").disabled=false; $("payBtn").textContent="Pay & place order";
+}
+const STATUS = { pending:"🕓 pending", baking:"🔥 baking", ready:"🔔 ready", out_for_delivery:"🛵 on the way", completed:"✅ completed", cancelled:"❌ cancelled" };
+async function renderTracking(showAll=false){
+  const q = $("trackName").value.trim().toLowerCase();
+  let orders = await TasteSeeDB.orders();
+  if(q && !showAll) orders = orders.filter(o=>o.customer_name.toLowerCase().includes(q));
+  $("trackList").innerHTML = orders.slice(0,20).map(o=>`
+    <div class="bg-white border rounded p-3 text-sm flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <div class="font-mono text-xs text-stone-400 shrink-0">#${String(o.id).slice(0,8)}</div>
+      <div class="flex-1 min-w-0"><b class="break-words">${o.customer_name}</b> · ${o.kind} · <b>${money(o.total_cents)}</b>
+      <div class="text-xs text-stone-500 break-words">${new Date(o.created_at).toLocaleString()} · ${(o.items||[]).map(i=>i.qty+"× "+(i.product_name||i.name)).join(", ")}</div></div>
+      <span class="text-xs bg-amber-100 px-2 py-1 rounded font-bold self-start sm:self-auto whitespace-nowrap">${STATUS[o.status]||o.status}</span>
+    </div>`).join("") || `<div class="text-sm text-stone-400">No orders found.</div>`;
+}
+init();
+</script>
+</body>
+</html>

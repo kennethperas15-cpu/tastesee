@@ -1,6 +1,12 @@
-# 🥮 Taste & See — warm cinnamon buns, on schedule
+# 🥮 Taste & See — small-batch buns, big comfort
 
 Online ordering + business analytics + **Bake Pool** (unique feature).
+
+## Menu (4 flavours, prices in Philippine pesos)
+- **Classic** — ₱95 · soft, buttery dough with our signature cinnamon swirl
+- **Tiramisu** — ₱145 · espresso-kissed cream and a cocoa finish
+- **Biscoff** — ₱135 · caramelized biscuit spread with a golden crunch
+- **Oreo** — ₱125 · cookies-and-cream filling with chocolate crumble
 
 ## Unique feature: 🔥 Bake Pool
 Timed bake batches (08:00 / 12:30 / 17:00). Customers claim buns in a shared batch:
@@ -23,10 +29,11 @@ python -m http.server 8000
 ```
 > `file://` also works, but http server is recommended for PyScript.
 
-## Connect Supabase (optional, 5 min)
-1. Create project at supabase.com → SQL Editor → paste + run `supabase/schema.sql`.
-2. Project Settings → API → copy URL + `anon` key.
-3. Store → **Settings** → paste keys → Save. Mode badge flips to `supabase mode`.
+## Connect Supabase (5 min)
+1. Supabase dashboard → SQL Editor → paste + run `supabase/schema.sql`, then `supabase/seed.sql`.
+2. Project Settings → API → copy the project URL + `anon` key.
+3. Store → **Settings** → paste keys → Save. Orders, pools, and tracking go live.
+4. Staff: create users in Authentication, then insert their UUID + role into `staff_access` (`admin` or `baker`) to unlock the admin dashboard.
 
 ## Analytics / predictions
 `py/analytics.py` + Admin dashboard:

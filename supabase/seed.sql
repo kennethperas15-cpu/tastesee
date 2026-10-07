@@ -1,23 +1,60 @@
--- Taste & See seed data — run AFTER schema.sql in Supabase SQL Editor.
--- Safe to re-run: inserts only when tables are empty / no pools today.
+-- Taste & See: currently available flavours and today's bake pools.
+-- Safe to rerun; legacy flavours are retained but deactivated.
+
+update products
+set name = 'Classic',
+    description = 'Soft, buttery dough with our signature cinnamon swirl.',
+    price_cents = 9500, emoji = '🌀', category = 'classic',
+    stock_daily = 80, is_active = true
+where lower(name) in ('classic cinnamon swirl', 'classic');
+
+update products
+set name = 'Tiramisu',
+    description = 'Espresso-kissed cream and a cocoa finish.',
+    price_cents = 14500, emoji = '☕', category = 'signature',
+    stock_daily = 40, is_active = true
+where lower(name) = 'tiramisu';
+
+update products
+set name = 'Biscoff',
+    description = 'Caramelized biscuit spread with a golden crunch.',
+    price_cents = 13500, emoji = '🍪', category = 'signature',
+    stock_daily = 40, is_active = true
+where lower(name) = 'biscoff';
+
+update products
+set name = 'Oreo',
+    description = 'Cookies-and-cream filling with a chocolate crumble.',
+    price_cents = 12500, emoji = '🍫', category = 'signature',
+    stock_daily = 40, is_active = true
+where lower(name) = 'oreo';
+
+update products
+set is_active = false
+where name not in ('Classic', 'Tiramisu', 'Biscoff', 'Oreo');
 
 insert into products (name, description, price_cents, emoji, category, stock_daily)
-select * from (values
-  ('Classic Cinnamon Swirl', 'Brioche, Ceylon cinnamon, brown-butter glaze.', 450, '🌀', 'classic', 80),
-  ('Sticky Pecan Caramel', 'Sea-salt caramel, toasted pecans, served warm.', 580, '🍯', 'premium', 40),
-  ('Cardamom Morning Bun', 'Swedish-style, cardamom sugar, light icing.', 490, '🌿', 'classic', 50),
-  ('Chocolate Babka Bun', 'Dark chocolate swirl, cocoa-nib crunch.', 520, '🍫', 'classic', 45),
-  ('Apple Pie Bun', 'Caramelized apple, oat crumble, cider glaze.', 550, '🍎', 'seasonal', 35),
-  ('Vegan Oatmilk Cinnamon', 'Plant-based, oatmilk icing, same gooey center.', 480, '🌱', 'vegan', 40),
-  ('Cream Cheese Frost Deluxe', 'Double frosting, vanilla bean, extra cinnamon dust.', 590, '🧁', 'premium', 50),
-  ('Pumpkin Spice (Limited)', 'Limited drop. Pumpkin custard, spice sugar.', 610, '🎃', 'limited', 24)
-) as v(name, description, price_cents, emoji, category, stock_daily)
-where not exists (select 1 from products);
+select v.name, v.description, v.price_cents, v.emoji, 'signature', v.stock_daily
+from (values
+  ('Classic', 'Soft, buttery dough with our signature cinnamon swirl.', 9500, '🌀', 80),
+  ('Tiramisu', 'Espresso-kissed cream and a cocoa finish.', 14500, '☕', 40),
+  ('Biscoff', 'Caramelized biscuit spread with a golden crunch.', 13500, '🍪', 40),
+  ('Oreo', 'Cookies-and-cream filling with a chocolate crumble.', 12500, '🍫', 40)
+) as v(name, description, price_cents, emoji, stock_daily)
+where not exists (select 1 from products p where p.name = v.name);
+
+update bake_pools
+set flavor_focus = 'Classic · Tiramisu · Biscoff · Oreo'
+where slot_time >= date_trunc('day', now());
 
 insert into bake_pools (title, flavor_focus, target_qty, slot_time)
-select * from (values
-  ('Morning Warm Batch', 'classic + cardamom', 12, CURRENT_DATE + time '08:00'),
-  ('Lunch Melt Batch', 'pecan + choc', 16, CURRENT_DATE + time '12:30'),
-  ('Sunset Cinna Batch', 'mixed + pumpkin', 20, CURRENT_DATE + time '17:00')
+select v.title, v.flavor_focus, v.target_qty, CURRENT_DATE + v.slot_time
+from (values
+  ('Morning Warm Batch', 'Classic · Tiramisu · Biscoff · Oreo', 12, time '08:00'),
+  ('Lunch Melt Batch', 'Classic · Tiramisu · Biscoff · Oreo', 16, time '12:30'),
+  ('Sunset Cinna Batch', 'Classic · Tiramisu · Biscoff · Oreo', 20, time '17:00')
 ) as v(title, flavor_focus, target_qty, slot_time)
-where not exists (select 1 from bake_pools where slot_time >= date_trunc('day', now()));
+where not exists (
+  select 1 from bake_pools p
+  where p.slot_time >= date_trunc('day', now())
+);

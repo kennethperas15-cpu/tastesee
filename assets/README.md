@@ -1,7 +1,6 @@
 # Brand assets
 
-Save the Taste & See logo image in this folder as **`logo.png`**
-(square PNG, the circular badge artwork).
+The supplied square Taste & See badge is stored here as **`logo.png`**.
 
 It is referenced by:
 - `index.html` — header, hero medallion, footer, favicon, social preview

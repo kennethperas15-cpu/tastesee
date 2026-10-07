@@ -19,38 +19,38 @@
 </script>
 <script src="./js/db.js"></script>
 </head>
-<body class="min-h-screen bg-[#f7f3ed] text-stone-800">
-<header class="sticky top-0 z-20 border-b border-stone-200 bg-white/95 backdrop-blur">
+<body class="min-h-screen bg-[#f5fbff] text-stone-800">
+<header class="sticky top-0 z-20 border-b border-sky-100 bg-white/95 backdrop-blur">
   <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
     <a href="./index.html" class="text-sm font-semibold text-stone-500 hover:text-stone-900">← Store</a>
-    <div class="flex-1 flex items-center gap-2.5 min-w-0"><span class="relative grid place-items-center h-9 w-9 rounded-full overflow-hidden bg-amber-50 ring-1 ring-stone-200 text-lg shrink-0">🥐<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><div class="min-w-0"><div class="font-black">Baker station</div><div id="staffIdentity" class="text-xs text-stone-500">Private production workspace</div></div></div>
-    <button id="signOutBtn" onclick="staffSignOut()" class="hidden rounded-lg bg-stone-100 px-3 py-2 text-xs font-bold">Sign out</button>
+    <div class="flex-1 flex items-center gap-2.5 min-w-0"><span class="relative grid place-items-center h-9 w-9 rounded-full overflow-hidden bg-white ring-1 ring-sky-200 text-lg shrink-0">🥐<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><div class="min-w-0"><div class="font-black">Baker station</div><div id="staffIdentity" class="text-xs text-stone-500">Private production workspace</div></div></div>
+    <button id="signOutBtn" onclick="staffSignOut()" class="hidden rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800">Sign out</button>
   </div>
 </header>
 
 <section id="staffGate" class="mx-auto max-w-md px-4 py-12">
   <div class="rounded-3xl border border-stone-200 bg-white p-6 shadow-xl shadow-stone-900/5 sm:p-8">
-    <div class="text-xs font-bold uppercase tracking-[.2em] text-orange-700">Kitchen only</div>
+    <div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Kitchen only</div>
     <h1 class="mt-2 text-2xl font-black">Baker sign in</h1>
     <p class="mt-2 text-sm text-stone-500">Sign in with your assigned baker account to see today’s production queue.</p>
-    <div id="authConfig" class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Staff sign-in needs a Supabase URL and anon key. Configure the connection from the storefront settings.</div>
+    <div id="authConfig" class="mt-4 hidden rounded-xl bg-sky-50 p-3 text-sm text-sky-900">Staff sign-in needs a Supabase URL and anon key. Configure the connection from the storefront settings.</div>
     <form onsubmit="staffSignIn(event)" class="mt-5 space-y-3">
       <label class="block text-sm font-semibold">Email<input id="staffEmail" type="email" autocomplete="username" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal"/></label>
       <label class="block text-sm font-semibold">Password<input id="staffPassword" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal"/></label>
       <div id="authError" role="alert" class="hidden text-sm text-rose-700"></div>
-      <button id="authSubmit" class="w-full rounded-xl bg-stone-950 py-3 font-bold text-white">Enter baker station</button>
+      <button id="authSubmit" class="w-full rounded-xl bg-sky-600 py-3 font-bold text-white">Enter baker station</button>
     </form>
   </div>
 </section>
 
 <main id="bakerWorkspace" class="mx-auto hidden max-w-6xl px-4 py-7">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div><div class="text-xs font-bold uppercase tracking-[.2em] text-orange-700">Freshness starts here</div><h1 class="mt-1 text-3xl font-black">Today’s bake queue</h1><p class="mt-2 text-sm text-stone-500">Move each order from the oven to the pickup shelf.</p></div>
-    <button onclick="loadQueue()" class="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-bold">↻ Refresh orders</button>
+    <div><div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Freshness starts here</div><h1 class="mt-1 text-3xl font-black">Today’s bake queue</h1><p class="mt-2 text-sm text-stone-500">Move each order from the oven to the pickup shelf.</p></div>
+    <button onclick="loadQueue()" class="rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-bold">↻ Refresh orders</button>
   </div>
   <div class="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
     <div class="rounded-2xl border border-stone-200 bg-white p-3 sm:p-4"><div class="text-xs text-stone-500">TO START</div><div id="pendingCount" class="mt-1 text-2xl font-black">0</div></div>
-    <div class="rounded-2xl border border-orange-200 bg-orange-50 p-3 sm:p-4"><div class="text-xs text-orange-800">IN THE OVEN</div><div id="bakingCount" class="mt-1 text-2xl font-black">0</div></div>
+    <div class="rounded-2xl border border-sky-200 bg-sky-50 p-3 sm:p-4"><div class="text-xs text-sky-800">IN THE OVEN</div><div id="bakingCount" class="mt-1 text-2xl font-black">0</div></div>
     <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4"><div class="text-xs text-emerald-800">READY</div><div id="readyCount" class="mt-1 text-2xl font-black">0</div></div>
   </div>
   <div id="queueError" role="alert" class="mt-4 hidden rounded-xl bg-rose-50 p-3 text-sm text-rose-800"></div>
@@ -76,12 +76,12 @@ function renderQueue(orders){
   $("orderQueue").innerHTML=active.map(order=>{
     const next=order.status==="pending"?"baking":order.status==="baking"?"ready":null;
     const action=next==="baking"?"Start baking":next==="ready"?"Mark ready":"On the pickup shelf";
-    return `<article class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+    return `    <article class="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
       <div class="flex items-start gap-3"><div class="min-w-0 flex-1"><div class="font-mono text-xs text-stone-400">#${escapeHTML(String(order.id).slice(0,8))} · ${new Date(order.created_at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</div><h2 class="mt-1 break-words text-lg font-black">${escapeHTML(order.customer_name)}</h2><div class="mt-1 text-xs text-stone-500">${order.kind==="delivery"?"🛵 Delivery":"🏃 Pickup"}${order.address?` · ${escapeHTML(order.address)}`:""}</div></div>
-      <span class="rounded-full px-3 py-1 text-xs font-bold ${order.status==="pending"?"bg-amber-100 text-amber-900":order.status==="baking"?"bg-orange-100 text-orange-900":"bg-emerald-100 text-emerald-900"}">${order.status==="pending"?"To start":order.status==="baking"?"In the oven":"Ready"}</span></div>
+      <span class="rounded-full px-3 py-1 text-xs font-bold ${order.status==="pending"?"bg-sky-100 text-sky-900":order.status==="baking"?"bg-blue-100 text-blue-900":"bg-emerald-100 text-emerald-900"}">${order.status==="pending"?"To start":order.status==="baking"?"In the oven":"Ready"}</span></div>
       <ul class="mt-3 text-sm">${(order.items||[]).map(itemText).join("")}</ul>
       <div class="mt-3 flex items-center justify-between border-t border-stone-100 pt-3"><span class="text-sm font-bold">Order total</span><b>${money(order.total_cents)}</b></div>
-      ${next?`<button onclick="advanceOrder('${escapeHTML(order.id)}','${next}')" class="mt-3 w-full rounded-xl bg-stone-950 py-3 text-sm font-bold text-white">${action} →</button>`:`<div class="mt-3 rounded-xl bg-emerald-50 py-3 text-center text-sm font-bold text-emerald-900">✓ Ready for pickup</div>`}
+      ${next?`<button onclick="advanceOrder('${escapeHTML(order.id)}','${next}')" class="mt-3 w-full rounded-xl bg-sky-600 py-3 text-sm font-bold text-white">${action} →</button>`:`<div class="mt-3 rounded-xl bg-emerald-50 py-3 text-center text-sm font-bold text-emerald-900">✓ Ready for pickup</div>`}
     </article>`;
   }).join("")||`<div class="rounded-2xl border border-dashed border-stone-300 bg-white p-8 text-center md:col-span-2"><div class="text-3xl">🍞</div><p class="mt-2 font-bold">All caught up</p><p class="mt-1 text-sm text-stone-500">New orders will show up here as they arrive.</p></div>`;
 }

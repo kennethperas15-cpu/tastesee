@@ -25,30 +25,30 @@
 <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css"/>
 <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
 </head>
-<body class="bg-stone-100 text-stone-800 min-h-screen">
-<header class="bg-stone-950 text-stone-100 sticky top-0 z-20">
+<body class="bg-[#f5fbff] text-stone-800 min-h-screen">
+<header class="bg-sky-600 text-white sticky top-0 z-20">
   <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
     <a href="./index.html" class="text-xs sm:text-sm underline opacity-70 whitespace-nowrap px-1 py-2">←<span class="hidden min-[420px]:inline"> Store</span></a>
     <div class="font-black flex-1 text-sm sm:text-base truncate flex items-center gap-2"><span class="relative grid place-items-center h-7 w-7 rounded-full overflow-hidden bg-white ring-1 ring-stone-700 text-sm shrink-0">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><span class="truncate">📊 <span class="hidden min-[420px]:inline">Taste &amp; See </span>Admin <span id="modeBadge" class="text-[11px] font-normal opacity-60"></span></span></div>
     <a id="bakerLink" href="./baker.html" class="hidden text-xs underline opacity-80 whitespace-nowrap">Baker station</a>
-    <button onclick="location.reload()" class="text-xs bg-stone-800 px-3 py-2 rounded whitespace-nowrap">↻<span class="hidden sm:inline"> Refresh</span></button>
-    <button id="signOutBtn" onclick="staffSignOut()" class="hidden text-xs bg-stone-800 px-3 py-2 rounded whitespace-nowrap">Sign out</button>
+    <button onclick="location.reload()" class="text-xs bg-sky-500 px-3 py-2 rounded whitespace-nowrap">↻<span class="hidden sm:inline"> Refresh</span></button>
+    <button id="signOutBtn" onclick="staffSignOut()" class="hidden text-xs bg-sky-500 px-3 py-2 rounded whitespace-nowrap">Sign out</button>
   </div>
 </header>
 
 <section id="staffGate" class="max-w-md mx-auto px-4 py-12">
   <div class="rounded-3xl border border-stone-200 bg-white p-6 sm:p-8 shadow-xl shadow-stone-900/5">
-    <div class="text-xs font-bold uppercase tracking-[.2em] text-amber-700">Private workspace</div>
+    <div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Private workspace</div>
     <h1 class="mt-2 text-2xl font-black">Admin sign in</h1>
     <p class="mt-2 text-sm text-stone-500">Sign in with an admin account assigned by the owner.</p>
-    <div id="authConfig" class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Staff sign-in needs a Supabase URL and anon key. Set them in <code>index.html</code> or connect Supabase from the storefront settings.</div>
+    <div id="authConfig" class="mt-4 hidden rounded-xl bg-sky-50 p-3 text-sm text-sky-900">Staff sign-in needs a Supabase URL and anon key. Set them in <code>index.html</code> or connect Supabase from the storefront settings.</div>
     <form onsubmit="staffSignIn(event)" class="mt-5 space-y-3">
       <label class="block text-sm font-semibold">Email<input id="staffEmail" type="email" autocomplete="username" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal" /></label>
       <label class="block text-sm font-semibold">Password<input id="staffPassword" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal" /></label>
       <div id="authError" role="alert" class="hidden text-sm text-rose-700"></div>
-      <button id="authSubmit" class="w-full rounded-xl bg-stone-950 py-3 font-bold text-white">Sign in securely</button>
+      <button id="authSubmit" class="w-full rounded-xl bg-sky-600 py-3 font-bold text-white">Sign in securely</button>
     </form>
-    <a href="./baker.html" class="mt-5 inline-block text-sm font-semibold text-amber-800 underline">Go to baker sign in →</a>
+    <a href="./baker.html" class="mt-5 inline-block text-sm font-semibold text-sky-700 underline">Go to baker sign in →</a>
   </div>
 </section>
 
@@ -67,11 +67,11 @@
   </div>
 
   <!-- PREDICTIONS -->
-  <div class="bg-gradient-to-br from-amber-950 to-stone-900 text-amber-50 rounded-2xl p-4 sm:p-5">
+  <div class="bg-gradient-to-br from-sky-700 to-blue-600 text-white rounded-2xl p-4 sm:p-5">
     <div class="flex flex-col sm:flex-row sm:items-center gap-2"><span class="text-xl">🔮</span>
       <div class="flex-1 min-w-0"><div class="font-black text-[15px] sm:text-base">Demand forecast — next 7 days</div>
       <div class="text-xs opacity-60">🐍 Python (PyScript) · 7-day avg × weekday factor + trend · safety ×1.05</div></div>
-      <span id="pyBadge" class="self-start sm:self-auto text-[11px] bg-amber-500/20 px-2 py-1 rounded whitespace-nowrap">py warming…</span>
+      <span id="pyBadge" class="self-start sm:self-auto text-[11px] bg-white/15 px-2 py-1 rounded whitespace-nowrap">py warming…</span>
     </div>
     <div id="forecastTable" class="mt-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"><div class="text-sm opacity-60">computing…</div></div>
     <div id="bakeAdvice" class="mt-3 text-sm bg-white/10 rounded p-3 break-words"></div>
@@ -132,7 +132,7 @@ for i in range(1,8):
 
 html = "<table class='w-full text-sm min-w-[560px]'><tr class='text-left opacity-60 text-xs'><th class='pr-2'>DAY</th><th class='pr-2'>FORECAST</th><th class='pr-2'>BAKE PLAN</th><th>REV ≈</th></tr>"
 for d,q,b,r in rows:
-    html += f"<tr class='border-t border-white/10'><td class='py-1.5 font-bold'>{d}</td><td>{q} buns</td><td><span class='bg-amber-500 text-amber-950 px-2 py-0.5 rounded font-bold'>{b}</span></td><td>₱{r:,.0f}</td></tr>"
+    html += f"<tr class='border-t border-white/10'><td class='py-1.5 font-bold'>{d}</td><td>{q} buns</td><td><span class='bg-sky-200 text-sky-950 px-2 py-0.5 rounded font-bold'>{b}</span></td><td>₱{r:,.0f}</td></tr>"
 html += "</table>"
 document.getElementById("forecastTable").innerHTML = html
 document.getElementById("bakeAdvice").innerHTML = (
@@ -167,7 +167,7 @@ function fallbackForecast(){
   if($("forecastTable").innerHTML.includes("<table")) return; // py already rendered
   const {q,w}=demo28(); const fc=jsForecast(q.slice(-14),w.slice(-14));
   $("forecastTable").innerHTML="<table class='w-full text-sm min-w-[560px]'><tr class='text-left opacity-60 text-xs'><th class='pr-2'>DAY</th><th class='pr-2'>FORECAST</th><th class='pr-2'>BAKE</th><th>REV</th></tr>"+
-    fc.map(x=>`<tr class='border-t border-white/10'><td class='py-1.5 font-bold pr-2'>${x.d}</td><td class='pr-2'>${x.q}</td><td class='pr-2'><span class='bg-amber-500 text-amber-950 px-2 py-0.5 rounded font-bold'>${x.bake}</span></td><td>₱${x.rev.toLocaleString("en-PH")}</td></tr>`).join("")+"</table>";
+    fc.map(x=>`<tr class='border-t border-white/10'><td class='py-1.5 font-bold pr-2'>${x.d}</td><td class='pr-2'>${x.q}</td><td class='pr-2'><span class='bg-sky-200 text-sky-950 px-2 py-0.5 rounded font-bold'>${x.bake}</span></td><td>₱${x.rev.toLocaleString("en-PH")}</td></tr>`).join("")+"</table>";
   $("bakeAdvice").innerHTML="✅ JS-fallback forecast (PyScript blocked by browser). Same formula, same numbers.";
   $("pyBadge").textContent="js fallback";
 }
@@ -194,13 +194,13 @@ async function init(){
   // charts: demo daily series + real hours
   const {q}=demo28(); const last14=q.slice(-14);
   const chartOpts = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}, x:{ticks:{maxTicksLimit:7, font:{size:10}}}}};
-  new Chart($("chSales"),{type:"bar",data:{labels:last14.map((_,i)=>"D-"+(i+1)),datasets:[{data:last14,backgroundColor:"#b45309", borderRadius:4}]},options:chartOpts});
+  new Chart($("chSales"),{type:"bar",data:{labels:last14.map((_,i)=>"D-"+(i+1)),datasets:[{data:last14,backgroundColor:"#38bdf8", borderRadius:4}]},options:chartOpts});
   const hrs=new Array(24).fill(0); orders.forEach(o=>{hrs[new Date(o.created_at).getHours()]++;});
   if(!orders.length){[8,8,9,12,12,13,17,17,18].forEach(h=>hrs[h]+=4);}
-  new Chart($("chHours"),{type:"line",data:{labels:[...Array(24).keys()].map(h=>h+"h"),datasets:[{data:hrs,borderColor:"#b45309",tension:.4, pointRadius:0}]},options:chartOpts});
+  new Chart($("chHours"),{type:"line",data:{labels:[...Array(24).keys()].map(h=>h+"h"),datasets:[{data:hrs,borderColor:"#0284c7",tension:.4, pointRadius:0}]},options:chartOpts});
   $("poolAdmin").innerHTML=pools.map(p=>{const pct=Math.min(100,Math.round(100*p.joined_qty/p.target_qty));
     return `<div class='border rounded p-2'><b>${escapeHTML(p.title)}</b> <span class='text-stone-400'>${new Date(p.slot_time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span>
-    <div class='h-1.5 bg-stone-200 rounded mt-1'><div class='h-1.5 bg-orange-600 rounded' style='width:${pct}%'></div></div>
+    <div class='h-1.5 bg-sky-100 rounded mt-1'><div class='h-1.5 bg-sky-600 rounded' style='width:${pct}%'></div></div>
     <div class='text-xs mt-1'>${p.joined_qty}/${p.target_qty} · ${p.status} · −${p.discount_pct}%</div></div>`;}).join("");
   const counts={}; orders.forEach(o=>(o.items||[]).forEach(i=>{counts[i.product_name||i.name]=(counts[i.product_name||i.name]||0)+i.qty;}));
   const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
@@ -209,12 +209,15 @@ async function init(){
   $("orderAdmin").innerHTML=orders.slice(0,30).map(o=>`<div class='border rounded p-2.5 flex flex-col sm:flex-row sm:items-center gap-2'>
     <div class='flex items-center gap-2 min-w-0 flex-1 flex-wrap'>
       <span class='font-mono text-xs text-stone-400 shrink-0'>#${String(o.id).slice(0,8)}</span><b class='break-words'>${escapeHTML(o.customer_name)}</b>
-      <span class='whitespace-nowrap'>${money(o.total_cents)}</span><span class='bg-amber-100 px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap'>${o.status}</span>
+      <span class='whitespace-nowrap'>${money(o.total_cents)}</span><span class='bg-sky-100 text-sky-800 px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap'>${o.status}</span>
     </div>
     <span class='flex gap-1.5 flex-wrap'>${STS.map(s=>`<button onclick="setSt('${o.id}','${s}')" class='text-xs border rounded px-2 py-1.5 min-h-[32px] ${s===o.status?'bg-stone-900 text-white':''}'>${s}</button>`).join("")}</span></div>`).join("")||"<div class='text-stone-400'>No orders yet. Place one from the store.</div>";
   setTimeout(fallbackForecast, 6000);
 }
-async function setSt(id,s){ await TasteSeeDB.setStatus(id,s); await init(); }
+async function setSt(id,s){
+  try { await TasteSeeDB.setStatus(id,s); await init(); }
+  catch(e){ $("dashboardError").textContent=`Could not update that order: ${e.message}`; $("dashboardError").classList.remove("hidden"); }
+}
 async function staffSignIn(event){
   event.preventDefault(); $("authError").classList.add("hidden"); $("authSubmit").disabled=true;
   try { await TasteSeeDB.signIn($("staffEmail").value.trim(),$("staffPassword").value,["admin"]); await init(); }

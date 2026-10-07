@@ -8,8 +8,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // Optional: paste your Supabase project here OR use Settings modal (stored in localStorage).
-  window.TASTESEE_SUPABASE_URL = "";
-  window.TASTESEE_SUPABASE_ANON_KEY = "";
+  window.TASTESEE_SUPABASE_URL = "https://ubjpsjndtzlpugvxduhr.supabase.co";
+  window.TASTESEE_SUPABASE_ANON_KEY = ""; // set via Settings modal (stored in localStorage, never committed)
   if (window.TASTESEE_SUPABASE_URL && window.supabase) {
     window.supabaseClient = window.supabase.createClient(window.TASTESEE_SUPABASE_URL, window.TASTESEE_SUPABASE_ANON_KEY);
   } else {

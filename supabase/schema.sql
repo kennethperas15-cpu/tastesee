@@ -127,16 +127,15 @@ drop policy if exists "admin delete pools" on bake_pools;
 create policy "staff insert pools" on bake_pools for insert to authenticated
   with check (public.has_staff_role(array['admin']));
 create policy "staff update pools" on bake_pools for update to authenticated
-  using (public.has_staff_role(array['admin', 'baker']))
-  with check (public.has_staff_role(array['admin', 'baker']));
+  using (public.has_staff_role(array['admin']))
+  with check (public.has_staff_role(array['admin']));
 create policy "admin delete pools" on bake_pools for delete to authenticated
   using (public.has_staff_role(array['admin']));
 
 drop policy if exists "public read orders" on orders;
 drop policy if exists "public insert orders" on orders;
 drop policy if exists "public update orders" on orders;
-create policy "public insert orders" on orders for insert to anon, authenticated
-  with check (status = 'pending' and total_cents >= 0);
+revoke insert on public.orders from anon, authenticated;
 drop policy if exists "staff read orders" on orders;
 drop policy if exists "staff update orders" on orders;
 drop policy if exists "admin delete orders" on orders;
@@ -148,18 +147,47 @@ create policy "staff update orders" on orders for update to authenticated
 create policy "admin delete orders" on orders for delete to authenticated
   using (public.has_staff_role(array['admin']));
 
+create or replace function public.guard_staff_order_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.has_staff_role(array['admin']) then
+    return new;
+  end if;
+
+  if not public.has_staff_role(array['baker'])
+    or (to_jsonb(new) - 'status') is distinct from (to_jsonb(old) - 'status')
+    or not (
+      (old.status = 'pending' and new.status = 'baking')
+      or (old.status = 'baking' and new.status = 'ready')
+    ) then
+    raise exception 'Baker accounts can only advance orders from pending to baking to ready.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_staff_order_update on public.orders;
+create trigger guard_staff_order_update
+before update on public.orders
+for each row execute function public.guard_staff_order_update();
+
 drop policy if exists "public read items" on order_items;
 drop policy if exists "public insert items" on order_items;
 create policy "staff read items" on order_items for select to authenticated
   using (public.has_staff_role(array['admin', 'baker']));
-create policy "public insert items" on order_items for insert to anon, authenticated
-  with check (qty > 0 and unit_price_cents >= 0);
+revoke insert on public.order_items from anon, authenticated;
 
 drop policy if exists "public read participants" on pool_participants;
 drop policy if exists "staff read participants" on pool_participants;
 drop policy if exists "public insert participants" on pool_participants;
 create policy "staff read participants" on pool_participants for select to authenticated
   using (public.has_staff_role(array['admin', 'baker']));
+revoke insert on public.pool_participants from anon, authenticated;
 
 create or replace function public.join_bake_pool(
   p_pool_id uuid,
@@ -183,6 +211,7 @@ begin
   set joined_qty = joined_qty + p_qty,
       status = case when joined_qty + p_qty >= target_qty then 'locked' else 'filling' end
   where id = p_pool_id and status = 'filling'
+    and joined_qty + p_qty <= target_qty
   returning * into updated_pool;
 
   if not found then
@@ -196,6 +225,135 @@ $$;
 
 revoke all on function public.join_bake_pool(uuid, text, int, uuid) from public;
 grant execute on function public.join_bake_pool(uuid, text, int, uuid) to anon, authenticated;
+
+create or replace function public.create_order(
+  p_customer_name text,
+  p_phone text,
+  p_kind text,
+  p_address text,
+  p_subtotal_cents int,
+  p_discount_cents int,
+  p_total_cents int,
+  p_pool_id uuid,
+  p_estimated_ready_at timestamptz,
+  p_items jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_order_id uuid;
+  expected_subtotal int;
+  delivery_cents int;
+  base_price_cents int;
+  expected_unit_cents int;
+  size_name text;
+  icing_name text;
+  topping_name text;
+  item jsonb;
+begin
+  if length(trim(coalesce(p_customer_name, ''))) < 2
+    or p_kind not in ('pickup', 'delivery')
+    or p_subtotal_cents < 0
+    or p_discount_cents < 0
+    or jsonb_typeof(p_items) <> 'array'
+    or jsonb_array_length(p_items) = 0 then
+    raise exception 'Order details are invalid.';
+  end if;
+
+  if p_kind = 'delivery' and length(trim(coalesce(p_address, ''))) < 5 then
+    raise exception 'A delivery address is required.';
+  end if;
+
+  select coalesce(sum((value->>'unit_price_cents')::int * (value->>'qty')::int), 0)
+  into expected_subtotal
+  from jsonb_array_elements(p_items);
+
+  if expected_subtotal <> p_subtotal_cents then
+    raise exception 'Order subtotal does not match its items.';
+  end if;
+
+  if p_pool_id is not null then
+    if p_discount_cents <> round(p_subtotal_cents * 0.15) then
+      raise exception 'Bake Pool discount is invalid.';
+    end if;
+  elsif p_discount_cents <> 0 then
+    raise exception 'A discount requires a Bake Pool.';
+  end if;
+
+  delivery_cents := case when p_kind = 'delivery' then 6000 else 0 end;
+  if p_total_cents <> p_subtotal_cents - p_discount_cents + delivery_cents then
+    raise exception 'Order total is invalid.';
+  end if;
+
+  insert into public.orders (
+    customer_name, phone, kind, address, status, subtotal_cents,
+    discount_cents, total_cents, pool_id, is_pool_order, estimated_ready_at
+  ) values (
+    trim(p_customer_name), coalesce(p_phone, ''), p_kind, coalesce(p_address, ''),
+    'pending', p_subtotal_cents, p_discount_cents, p_total_cents,
+    p_pool_id, p_pool_id is not null, p_estimated_ready_at
+  ) returning id into new_order_id;
+
+  for item in select value from jsonb_array_elements(p_items) loop
+    if length(trim(coalesce(item->>'name', ''))) = 0
+      or coalesce((item->>'qty')::int, 0) < 1
+      or coalesce((item->>'unit_price_cents')::int, -1) < 0 then
+      raise exception 'An order item is invalid.';
+    end if;
+
+    select price_cents into base_price_cents
+    from public.products
+    where is_active and name = split_part(item->>'name', ' (', 1)
+    limit 1;
+
+    size_name := item->'custom'->>'size';
+    icing_name := item->'custom'->>'icing';
+    topping_name := item->'custom'->>'topping';
+    if base_price_cents is null
+      or coalesce(size_name, '') not in ('Regular', 'Large (+₱30)', 'Mini Box x4')
+      or coalesce(icing_name, '') not in ('Classic glaze', 'Cream cheese', 'No icing', 'Extra cream (+₱15)')
+      or coalesce(topping_name, '') not in ('None', 'Crushed Oreo (+₱15)', 'Biscoff crumble (+₱15)', 'Cocoa dust (free)') then
+      raise exception 'An order item is not on the current menu.';
+    end if;
+
+    if size_name = 'Mini Box x4' then
+      expected_unit_cents := round(base_price_cents * 3.4);
+    else
+      expected_unit_cents := base_price_cents
+        + case when size_name = 'Large (+₱30)' then 3000 else 0 end
+        + case when icing_name = 'Extra cream (+₱15)' then 1500 else 0 end
+        + case when topping_name in ('Crushed Oreo (+₱15)', 'Biscoff crumble (+₱15)') then 1500 else 0 end;
+    end if;
+
+    if (item->>'unit_price_cents')::int <> expected_unit_cents then
+      raise exception 'An order item price does not match the current menu.';
+    end if;
+
+    insert into public.order_items (
+      order_id, product_name, qty, unit_price_cents, customizations
+    ) values (
+      new_order_id, item->>'name', (item->>'qty')::int,
+      (item->>'unit_price_cents')::int, coalesce(item->'custom', '{}'::jsonb)
+    );
+  end loop;
+
+  if p_pool_id is not null then
+    perform public.join_bake_pool(
+      p_pool_id, p_customer_name,
+      (select sum((value->>'qty')::int)::int from jsonb_array_elements(p_items)),
+      new_order_id
+    );
+  end if;
+
+  return new_order_id;
+end;
+$$;
+
+revoke all on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb) from public;
+grant execute on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb) to anon, authenticated;
 
 create or replace function public.track_orders(p_customer_name text, p_order_id text)
 returns jsonb
@@ -215,8 +373,8 @@ as $$
       ), '[]'::jsonb) as items
     from public.orders o
     where length(trim(coalesce(p_customer_name, ''))) >= 2
-      and length(trim(coalesce(p_order_id, ''))) >= 8
-      and o.id::text like lower(trim(p_order_id)) || '%'
+      and trim(coalesce(p_order_id, '')) ~ '^[0-9a-fA-F]{8}$'
+      and left(o.id::text, 8) = lower(trim(p_order_id))
       and lower(o.customer_name) = lower(trim(p_customer_name))
     order by o.created_at desc
     limit 20

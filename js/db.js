@@ -92,7 +92,8 @@ window.TasteSeeDB = {
   products: async () => {
     if (useSupa()) {
       const { data, error } = await supa().from("products").select("*").eq("is_active", true);
-      if (!error && data && data.length) return data.map(p => ({
+      if (error) throw error;
+      if (data && data.length) return data.map(p => ({
         id: p.id, name: p.name, price_cents: p.price_cents, emoji: p.emoji || "🥯",
         description: p.description || "", stock_daily: p.stock_daily ?? 50 }));
       return FALLBACK_PRODUCTS;
@@ -104,7 +105,8 @@ window.TasteSeeDB = {
       const { data, error } = await supa().from("bake_pools").select("*")
         .gte("slot_time", new Date(new Date().setHours(0,0,0,0)).toISOString())
         .order("slot_time").limit(6);
-      if (!error && data && data.length) return data;
+      if (error) throw error;
+      if (data && data.length) return data;
     }
     return poolsWithRoll();
   },
@@ -126,28 +128,26 @@ window.TasteSeeDB = {
   createOrder: async (order) => {
     const rec = { id: uid(), created_at: new Date().toISOString(), status: "pending", ...order };
     if (useSupa()) {
-      const { data, error } = await supa().from("orders").insert({
-        customer_name: rec.customer_name, phone: rec.phone, kind: rec.kind, address: rec.address,
-        status: "pending", subtotal_cents: rec.subtotal_cents, discount_cents: rec.discount_cents,
-        total_cents: rec.total_cents, pool_id: rec.pool_id || null, is_pool_order: !!rec.pool_id,
-        estimated_ready_at: rec.estimated_ready_at || null,
-      }).select("id").single();
+      const { data, error } = await supa().rpc("create_order", {
+        p_customer_name: rec.customer_name,
+        p_phone: rec.phone || "",
+        p_kind: rec.kind,
+        p_address: rec.address || "",
+        p_subtotal_cents: rec.subtotal_cents,
+        p_discount_cents: rec.discount_cents,
+        p_total_cents: rec.total_cents,
+        p_pool_id: rec.pool_id || null,
+        p_estimated_ready_at: rec.estimated_ready_at || null,
+        p_items: rec.items.map(item => ({
+          name: item.name,
+          qty: item.qty,
+          unit_price_cents: item.unit_price_cents,
+          custom: item.custom || {},
+        })),
+      });
       if (error) throw error;
-      const oid = data.id;
-      if (rec.items?.length) {
-        const { error: itemsError } = await supa().from("order_items").insert(rec.items.map(it => ({
-        order_id: oid, product_name: it.name, qty: it.qty, unit_price_cents: it.unit_price_cents,
-        customizations: it.custom || {} })));
-        if (itemsError) throw itemsError;
-      }
-      if (rec.pool_id) {
-        const { error: poolError } = await supa().rpc("join_bake_pool", {
-          p_pool_id: rec.pool_id, p_customer_name: rec.customer_name,
-          p_qty: rec.items.reduce((a, i) => a + i.qty, 0), p_order_id: oid,
-        });
-        if (poolError) throw poolError;
-      }
-      rec.id = oid; return rec;
+      rec.id = data;
+      return rec;
     }
     const all = lsGet(LS_ORDERS, []); all.unshift(rec); lsSet(LS_ORDERS, all);
     if (rec.pool_id) window.TasteSeeDB.joinPool(rec.pool_id, rec.customer_name, rec.items.reduce((a,i)=>a+i.qty,0));
@@ -158,7 +158,8 @@ window.TasteSeeDB = {
       const { data, error } = await supa().from("orders").select("*, order_items(*)").order("created_at", { ascending: false }).limit(100);
       if (error) throw error;
       return (data || []).map(o => ({ id: o.id, customer_name: o.customer_name, kind: o.kind,
-        phone: o.phone, address: o.address, status: o.status, total_cents: o.total_cents,
+        phone: o.phone, address: o.address, pool_id: o.pool_id, is_pool_order: o.is_pool_order,
+        status: o.status, total_cents: o.total_cents,
         created_at: o.created_at, items: o.order_items || [] }));
     }
     return lsGet(LS_ORDERS, []);

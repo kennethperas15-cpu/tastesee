@@ -4,20 +4,25 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Taste &amp; See — Warm Cinnamon Buns</title>
+<link rel="icon" type="image/png" href="./assets/logo.png" />
+<link rel="apple-touch-icon" href="./assets/logo.png" />
+<meta property="og:image" content="./assets/logo.png" />
+<meta name="description" content="Taste & See — small-batch cinnamon buns. Classic, Tiramisu, Biscoff, Oreo. Join a warm batch." />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Optional: paste your Supabase project here OR use Settings modal (stored in localStorage).
+  // The public anon key is safe for browser use when database access is protected by RLS.
   window.TASTESEE_SUPABASE_URL = "https://ubjpsjndtzlpugvxduhr.supabase.co";
-  window.TASTESEE_SUPABASE_ANON_KEY = ""; // set via Settings modal (stored in localStorage, never committed)
-  if (window.TASTESEE_SUPABASE_URL && window.supabase) {
-    window.supabaseClient = window.supabase.createClient(window.TASTESEE_SUPABASE_URL, window.TASTESEE_SUPABASE_ANON_KEY);
-  } else {
-    try {
-      const u = localStorage.getItem("ts_sb_url"), k = localStorage.getItem("ts_sb_key");
-      if (u && k && window.supabase) window.supabaseClient = window.supabase.createClient(u, k);
-    } catch {}
-  }
+  window.TASTESEE_SUPABASE_ANON_KEY = "";
+  try {
+    const u = localStorage.getItem("ts_sb_url") || window.TASTESEE_SUPABASE_URL;
+    const k = localStorage.getItem("ts_sb_key") || window.TASTESEE_SUPABASE_ANON_KEY;
+    if (u && k && window.supabase) {
+      window.TASTESEE_SUPABASE_URL = u;
+      window.TASTESEE_SUPABASE_ANON_KEY = k;
+      window.supabaseClient = window.supabase.createClient(u, k);
+    }
+  } catch {}
 </script>
 <script src="./js/db.js"></script>
 <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
@@ -56,12 +61,11 @@
 <header class="sticky top-0 z-30 bg-amber-950 text-amber-50 shadow">
   <div id="scrollProgress" class="scroll-progress absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-amber-300 via-orange-400 to-rose-300"></div>
   <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
-    <div class="text-xl sm:text-2xl shrink-0">🥮</div>
+    <div class="relative shrink-0 grid place-items-center h-9 w-9 sm:h-10 sm:w-10 rounded-full overflow-hidden bg-white ring-2 ring-amber-200/70 text-lg" title="Taste & See">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" onload="this.previousSibling.remove()" onerror="this.remove()" /></div>
     <div class="flex-1 min-w-0">
       <div class="font-extrabold tracking-tight text-base sm:text-lg leading-none truncate">Taste &amp; See</div>
       <div class="text-[11px] sm:text-xs opacity-70 truncate hidden sm:block">small-batch buns, big comfort</div>
     </div>
-    <button onclick="document.getElementById('settingsDlg').showModal()" class="text-xs underline opacity-80 whitespace-nowrap px-1 py-2">⚙️<span class="hidden sm:inline"> Settings</span></button>
     <button onclick="toggleCart(true)" class="relative bg-amber-100 text-amber-950 font-bold px-3 sm:px-4 py-2.5 rounded-full text-sm whitespace-nowrap shrink-0">🧺<span class="hidden min-[420px]:inline"> Your bag</span> <span id="cartCount" class="absolute -top-2 -right-2 bg-rose-600 text-white text-xs rounded-full px-1.5">0</span></button>
   </div>
 </header>
@@ -80,7 +84,7 @@
   </div>
   <div class="relative min-h-[280px] overflow-hidden rounded-[2rem] bg-[#ead6b8] p-6 sm:p-9 text-center shadow-[inset_0_0_60px_rgba(120,67,22,.12)]">
     <div class="absolute -right-12 -top-16 h-56 w-56 rounded-full bg-orange-300/60 blur-2xl"></div><div class="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-rose-200/70 blur-2xl"></div>
-    <div class="hero-orbit relative mx-auto grid h-36 w-36 place-items-center rounded-full border border-white/60 bg-white/50 text-7xl shadow-xl shadow-amber-900/10 sm:h-44 sm:w-44 sm:text-8xl">🥮</div>
+    <div class="hero-orbit relative mx-auto grid h-36 w-36 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-white text-7xl shadow-xl shadow-amber-900/10 sm:h-44 sm:w-44 sm:text-8xl">🥮<img src="./assets/logo.png" alt="Taste & See cinnamon bun" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></div>
     <div class="relative mt-5 text-[11px] font-bold uppercase tracking-[.22em] text-amber-900/60">Fresh from our oven</div>
     <div class="relative mt-1 font-black text-xl sm:text-2xl">Your next happy bite.</div>
     <div id="nextBatch" class="relative mt-2 text-sm text-stone-700 break-words">Today’s batches are warming up…</div>
@@ -112,7 +116,7 @@
   <div id="trackList" class="mt-3 space-y-2"></div>
 </section>
 
-<footer class="border-t border-amber-900/10 bg-[#f2e9dc] text-center text-xs text-stone-500 py-8 px-4">Taste &amp; See · Baked fresh, shared with love · All prices in Philippine pesos</footer>
+<footer class="border-t border-amber-900/10 bg-[#f2e9dc] text-center text-xs text-stone-500 py-8 px-4"><span class="relative inline-grid place-items-center h-12 w-12 rounded-full overflow-hidden bg-white ring-2 ring-amber-200/70 text-2xl align-middle">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><div class="mt-2">Taste &amp; See · Baked fresh, shared with love · All prices in Philippine pesos <button onclick="document.getElementById('settingsDlg').showModal()" class="ml-2 underline underline-offset-2">Connection settings</button></div></footer>
 
 <!-- MOBILE STICKY CART BAR -->
 <div id="mobileBar" class="sm:hidden fixed bottom-0 inset-x-0 z-30 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t hidden">
@@ -172,7 +176,7 @@
       <label class="flex-1 border rounded p-2.5"><input type="radio" name="kind" value="delivery" onchange="coKind()" /> 🛵 Delivery (₱60)</label>
     </div>
     <input id="coAddr" placeholder="Delivery address (if delivery)" class="border rounded px-2 py-2.5 text-sm w-full mt-2 hidden" />
-    <input id="coCard" placeholder="Card 4242 4242 4242 4242 (mock)" class="border rounded px-2 py-2.5 text-sm w-full mt-2" value="4242 4242 4242 4242" />
+    <div class="mt-3 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">Mock checkout — no payment details are collected and no charge is made.</div>
     <div id="coErr" class="text-red-600 text-xs mt-2 hidden"></div>
     <div class="flex flex-col-reverse sm:flex-row gap-2 mt-4">
       <button onclick="document.getElementById('coDlg').close()" class="flex-1 border rounded py-3 sm:py-2 text-sm">Back</button>
@@ -201,7 +205,7 @@
      JS fallbacks keep the app working if WASM is blocked. -->
 <script type="py">
 from pyscript import document
-import js, datetime
+import js
 
 SIZES_UP = {"Regular": 0.0, "Large (+₱30)": 30.0}
 TOPPING_P = {"None": 0.0, "Crushed Oreo (+₱15)": 15.0, "Biscoff crumble (+₱15)": 15.0,
@@ -218,25 +222,13 @@ def py_unit_price(base, size, icing, topping):
 # expose to JS
 js.window.pyUnitPrice = py_unit_price
 
-# Craving predictor: simple heuristic — weekday + last-order recency
-try:
-    now = datetime.datetime.now()
-    wd = now.weekday()
-    if wd in (4, 5):
-        msg = f"It's {now.strftime('%A')} — a lovely day for a fresh batch."
-    elif wd == 6:
-        msg = "Sunday reset: 68% of regulars order a Mini Box today. Join the 17:00 Sunset pool."
-    else:
-        msg = f"{now.strftime('%A')} is a light day — perfect: pools are emptier, buns are faster + 15% off."
-    document.getElementById("cravingText").innerText = msg
-    document.getElementById("pyCheck").innerText = "py-check: python engine online ✅ totals double-checked"
-except Exception:
-    pass
+document.getElementById("pyCheck").innerText = "py-check: python engine online ✅ totals double-checked"
 </script>
 
 <script>
 const $ = id => document.getElementById(id);
 const money = c => "₱" + (c/100).toLocaleString("en-PH", {minimumFractionDigits:2, maximumFractionDigits:2});
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 const CATALOG = [
   { id:"classic", name:"Classic", price:95, emoji:"🌀", desc:"Soft, buttery dough with our signature cinnamon swirl.", tag:"The original" },
   { id:"tiramisu", name:"Tiramisu", price:145, emoji:"☕", desc:"Espresso-kissed cream with a dreamy cocoa finish.", tag:"A little indulgence" },
@@ -260,7 +252,6 @@ async function init(){
     ? "Connected: " + (localStorage.getItem("ts_sb_url") || window.TASTESEE_SUPABASE_URL)
     : "Currently: local demo mode. Paste the anon key above to go live.";
   renderMenu(); await renderPools(); renderCart(); observeReveals();
-  setTimeout(()=>{ if($("cravingText").textContent.includes("warming up")) $("cravingText").textContent = "Freshly baked in small batches, ready when you are."; }, 5000);
 }
 function observeReveals(){
   const elements = document.querySelectorAll(".reveal:not([data-observed])");
@@ -298,14 +289,15 @@ async function renderPools(){
   $("poolGrid").innerHTML = pools.map(p=>{
     const pct = Math.min(100, Math.round(100*p.joined_qty/p.target_qty));
     const sel = activePool===p.id;
+    const canJoin = p.status==="filling" && p.joined_qty<p.target_qty;
     const t = new Date(p.slot_time).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
     return `<div class="reveal rounded-2xl border border-stone-200 p-4 min-w-0 shadow-sm ${sel?'ring-2 ring-amber-400 bg-amber-50':'bg-white'}">
       <div class="flex items-start gap-2"><span class="text-2xl shrink-0">🔥</span>
-        <div class="flex-1 min-w-0"><div class="font-black text-[15px] sm:text-base leading-snug">${p.title}</div><div class="text-xs text-stone-500 break-words">${t} · ${p.flavor_focus} · −${p.discount_pct}%</div></div>
+        <div class="flex-1 min-w-0"><div class="font-black text-[15px] sm:text-base leading-snug">${escapeHTML(p.title)}</div><div class="text-xs text-stone-500 break-words">${t} · ${escapeHTML(p.flavor_focus)} · −${p.discount_pct}%</div></div>
         <span class="text-[10px] px-2 py-1 rounded whitespace-nowrap shrink-0 ${p.status==='filling'?'bg-amber-100 text-amber-800':'bg-stone-200'}">${p.status}</span></div>
       <div class="h-2 bg-stone-200 rounded mt-3"><div class="pool-bar h-2 bg-gradient-to-r from-amber-500 to-orange-600 rounded" style="width:${pct}%"></div></div>
       <div class="text-xs mt-1">${p.joined_qty}/${p.target_qty} buns claimed ${p.target_qty-p.joined_qty>0?`· <b>${p.target_qty-p.joined_qty} left</b> for max warmth`:'· <b>POOL FULL — baking!</b>'}</div>
-      <button onclick="selectPool('${p.id}')" class="mt-3 w-full ${sel?'bg-green-700 text-white':'bg-amber-950 text-amber-50'} text-sm font-bold py-3 sm:py-2 rounded">${sel?'✓ Pool applied (15% off)':'Join this pool −15%'}</button>
+      <button ${canJoin?"":"disabled"} onclick="selectPool('${p.id}')" class="mt-3 w-full ${sel?'bg-green-700 text-white':canJoin?'bg-amber-950 text-amber-50':'bg-stone-300 text-stone-600'} text-sm font-bold py-3 sm:py-2 rounded disabled:cursor-not-allowed">${sel?'✓ Pool applied (15% off)':canJoin?'Join this pool −15%':'This batch is full'}</button>
     </div>`;
   }).join("");
   observeReveals();
@@ -368,7 +360,7 @@ async function placeOrder(){
       customer_name:name, phone:$("coPhone").value.trim(), kind, address:$("coAddr").value.trim(),
       subtotal_cents:t.sub, discount_cents:t.disc, total_cents:t.tot, pool_id:activePool,
       estimated_ready_at: pool? new Date(new Date(pool.slot_time).getTime()+10*60000).toISOString() : new Date(Date.now()+25*60000).toISOString(),
-      items: cart.map(i=>({ name:`${i.name} (${i.size})`, qty:i.qty, unit_price_cents:i.unit_cents, custom:{icing:i.icing,topping:i.topping} })),
+      items: cart.map(i=>({ name:`${i.name} (${i.size})`, qty:i.qty, unit_price_cents:i.unit_cents, custom:{size:i.size,icing:i.icing,topping:i.topping} })),
     });
     cart=[]; activePool=null; renderCart(); await renderPools();
     $("coDlg").close(); toggleCart(false);
@@ -393,12 +385,14 @@ async function renderTracking(){
   $("trackList").innerHTML = orders.slice(0,20).map(o=>`
     <div class="bg-white border rounded p-3 text-sm flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
       <div class="font-mono text-xs text-stone-400 shrink-0">#${String(o.id).slice(0,8)}</div>
-      <div class="flex-1 min-w-0"><b class="break-words">${o.customer_name}</b> · ${o.kind} · <b>${money(o.total_cents)}</b>
-      <div class="text-xs text-stone-500 break-words">${new Date(o.created_at).toLocaleString()} · ${(o.items||[]).map(i=>i.qty+"× "+(i.product_name||i.name)).join(", ")}</div></div>
+      <div class="flex-1 min-w-0"><b class="break-words">${escapeHTML(o.customer_name)}</b> · ${escapeHTML(o.kind)} · <b>${money(o.total_cents)}</b>
+      <div class="text-xs text-stone-500 break-words">${new Date(o.created_at).toLocaleString()} · ${(o.items||[]).map(i=>i.qty+"× "+escapeHTML(i.product_name||i.name)).join(", ")}</div></div>
       <span class="text-xs bg-amber-100 px-2 py-1 rounded font-bold self-start sm:self-auto whitespace-nowrap">${STATUS[o.status]||o.status}</span>
     </div>`).join("") || `<div class="text-sm text-stone-400">No orders found.</div>`;
 }
-init();
+init().catch(e=>{
+  $("poolGrid").innerHTML = `<div class="rounded-xl border border-rose-200 bg-white p-4 text-sm text-rose-700">Availability could not be loaded: ${escapeHTML(e.message)}</div>`;
+});
 </script>
 </body>
 </html>

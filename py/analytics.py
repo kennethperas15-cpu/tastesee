@@ -45,7 +45,7 @@ def forecast_next_7(daily_qty: list[float], weekdays: list[int], daily_rev: list
     slope = max(min(slope, baseline * 0.15), -baseline * 0.15)  # dampen wild trends
     factors = weekday_factors(daily_qty, weekdays)
     last_wd = weekdays[-1] if weekdays else 0
-    avg_price = (sum(daily_rev) / max(sum(daily_qty), 1)) if daily_rev else 5.20
+    avg_price = (sum(daily_rev) / max(sum(daily_qty), 1)) if daily_rev else 125.0
     out = []
     for i in range(1, 8):
         wd = (last_wd + i) % 7
@@ -83,6 +83,6 @@ def demo_last_28_days(seed: int = 7) -> tuple[list[float], list[int], list[float
         base = 42 * weekend_boost * growth + rng.uniform(-6, 8)
         q = max(18.0, round(base, 1))
         qtys.append(q)
-        revs.append(round(q * (5.2 + rng.uniform(-0.3, 0.5)), 2))
+        revs.append(round(q * (125 + rng.uniform(-8, 8)), 2))
         wds.append(wd)
     return qtys, wds, revs

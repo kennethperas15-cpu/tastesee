@@ -1,46 +1,45 @@
-# 🥮 Taste & See — small-batch buns, big comfort
+<p align="center"><img src="./assets/logo.png" alt="Taste & See logo" width="180" /></p>
 
-Online ordering + business analytics + **Bake Pool** (unique feature).
+# Taste & See — fresh buns, baked with love
 
-## Menu (4 flavours, prices in Philippine pesos)
-- **Classic** — ₱95 · soft, buttery dough with our signature cinnamon swirl
-- **Tiramisu** — ₱145 · espresso-kissed cream and a cocoa finish
-- **Biscoff** — ₱135 · caramelized biscuit spread with a golden crunch
-- **Oreo** — ₱125 · cookies-and-cream filling with chocolate crumble
+Responsive Philippine-peso storefront for four fresh flavours: **Classic, Tiramisu, Biscoff, and Oreo**. Includes online ordering, shared Bake Pools, an admin dashboard, and a separate baker production queue.
 
-## Unique feature: 🔥 Bake Pool
-Timed bake batches (08:00 / 12:30 / 17:00). Customers claim buns in a shared batch:
-- **15% off** vs solo order
-- **Guaranteed warm** pickup (±10 min or free glaze)
-- Kitchen bakes pools **together** → less energy, less waste, predictable queue
+## Store experience
+- Scroll-triggered reveal animation and a live reading-progress indicator, with reduced-motion support.
+- PHP prices and a concise four-flavour menu.
+- Timed Bake Pools at 08:00 / 12:30 / 17:00, with 15% off.
+- Order lookup requires the checkout name and the first eight characters of the order number.
 
-Why it wins: group-buying urgency + batch-kitchen efficiency + a reason to return 3× daily.
+## Stack
+- **PyScript** — pricing math and in-browser business logic (`py/`, inline `<script type="py">`). JS fallbacks keep the app working if WASM is blocked.
+- **Supabase** — Postgres persistence (`supabase/schema.sql`). Falls back to localStorage for storefront demos when keys are absent.
 
-## Stack (as requested)
-- **PyScript** — pricing math, craving predictor, 7-day forecast run as Python in the browser (`py/`, inline `<script type="py">`). JS fallbacks keep the app working if WASM is blocked.
-- **Supabase** — Postgres persistence (`supabase/schema.sql`). Falls back to localStorage when keys are absent, so the demo runs with zero setup.
-
-## Run (2 min, no install)
+## Run locally
 ```powershell
 cd "C:\kazu\taste&see"
 python -m http.server 8000
-# open http://localhost:8000/index.html  (store)
-# open http://localhost:8000/admin.html  (analytics)
+# open http://localhost:8000/index.html
 ```
-> `file://` also works, but http server is recommended for PyScript.
+> `file://` also works, but an HTTP server is recommended for PyScript.
 
-## Connect Supabase (5 min)
-1. Supabase dashboard → SQL Editor → paste + run `supabase/schema.sql`, then `supabase/seed.sql`.
-2. Project Settings → API → copy the project URL + `anon` key.
-3. Store → **Settings** → paste keys → Save. Orders, pools, and tracking go live.
-4. Staff: create users in Authentication, then insert their UUID + role into `staff_access` (`admin` or `baker`) to unlock the admin dashboard.
+## Connect Supabase and provision staff
+1. Create a Supabase project. In the SQL Editor, run `supabase/schema.sql`, then `supabase/seed.sql`.
+2. Copy the project URL and publishable/anon key from **Project Settings → API**. Add them to the connection settings in the storefront, or configure `TASTESEE_SUPABASE_URL` and `TASTESEE_SUPABASE_ANON_KEY` in the HTML files.
+3. In **Authentication → Users**, create or invite staff accounts. Disable public sign-ups if they are not needed.
+4. Assign each account a role using the SQL Editor, replacing the email and role:
+   ```sql
+   insert into public.staff_access (user_id, role)
+   select id, 'admin'
+   from auth.users
+   where email = 'owner@example.com'
+   on conflict (user_id) do update set role = excluded.role;
+   ```
+   Use `'baker'` for baker accounts. Only the owner should manage `staff_access`; staff cannot grant roles to themselves.
+5. Staff sign in at `/admin.html` (admin only) or `/baker.html` (bakers and admins). The baker workspace advances orders from pending → baking → ready. Supabase row-level security enforces staff roles; localStorage demo mode does not grant staff access.
 
-## Analytics / predictions
-`py/analytics.py` + Admin dashboard:
-- 7-day demand forecast: `forecast = (7-day avg + trend × days_ahead) × weekday_factor`, safety ×1.05, ±15% band
-- Revenue estimate, bake plan per day, weekend staffing tip, waste advice
-- Peak hours, best sellers, pool attach rate, order-state pipeline
+## Admin analytics
+`/admin.html` requires an assigned admin account. It includes:
+- A 7-day demand forecast using moving average, weekday seasonality, and trend.
+- Revenue estimates, bake plans, peak hours, best sellers, pool rate, and order status controls.
 
-## Flow
-Store: menu → customize → cart → join pool (−15%) → checkout (mock pay, pickup/delivery) → tracking.
-Admin: KPIs → charts → forecast → pools → best sellers → order status buttons.
+Payments remain a mock checkout; no card is charged.

@@ -6,6 +6,22 @@ const customerNameFromUser = user => user.user_metadata?.full_name
 
 function supa() { return window.supabaseClient || null; }
 
+function isSessionMissing(error) {
+  return !!error && (error.name === "AuthSessionMissingError"
+    || /auth session missing/i.test(String(error.message || "")));
+}
+
+async function optionalUser(client) {
+  try {
+    const { data: { user }, error } = await client.auth.getUser();
+    if (error) throw error;
+    return user || null;
+  } catch (error) {
+    if (isSessionMissing(error)) return null;
+    throw error;
+  }
+}
+
 async function requireSupabase() {
   const client = supa();
   if (!window.TASTESEE_SUPABASE_URL || !window.TASTESEE_SUPABASE_ANON_KEY || !client) {
@@ -15,8 +31,7 @@ async function requireSupabase() {
 }
 
 async function requireUser(client) {
-  const { data: { user }, error } = await client.auth.getUser();
-  if (error) throw error;
+  const user = await optionalUser(client);
   if (!user) throw new Error("Sign in with Google to continue.");
   return user;
 }
@@ -42,8 +57,7 @@ window.TasteSeeDB = {
   },
   currentCustomer: async () => {
     const client = await requireSupabase();
-    const { data: { user }, error: authError } = await client.auth.getUser();
-    if (authError) throw authError;
+    const user = await optionalUser(client);
     if (!user) return null;
     const { data: staff, error } = await client.from("staff_access").select("role").eq("user_id", user.id).maybeSingle();
     if (error) throw error;
@@ -52,8 +66,7 @@ window.TasteSeeDB = {
   },
   currentStaff: async allowedRoles => {
     const client = await requireSupabase();
-    const { data: { user }, error: authError } = await client.auth.getUser();
-    if (authError) throw authError;
+    const user = await optionalUser(client);
     if (!user) return null;
     const { data, error } = await client.from("staff_access").select("role").eq("user_id", user.id).maybeSingle();
     if (error) throw error;

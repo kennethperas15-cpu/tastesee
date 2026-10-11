@@ -1,6 +1,21 @@
 -- Taste & See: currently available flavours. Safe to rerun.
 -- Safe to rerun; legacy flavours are retained but deactivated.
 
+-- Heal mis-cased leftovers (e.g. 'tiramisu' deleted by a case-sensitive
+-- cleanup): adopt the variant when no canonical row exists.
+update products set name = 'Classic', is_active = true
+where lower(name) = 'classic' and name <> 'Classic'
+  and not exists (select 1 from products where name = 'Classic');
+update products set name = 'Tiramisu', is_active = true
+where lower(name) = 'tiramisu' and name <> 'Tiramisu'
+  and not exists (select 1 from products where name = 'Tiramisu');
+update products set name = 'Biscoff', is_active = true
+where lower(name) = 'biscoff' and name <> 'Biscoff'
+  and not exists (select 1 from products where name = 'Biscoff');
+update products set name = 'Oreo', is_active = true
+where lower(name) = 'oreo' and name <> 'Oreo'
+  and not exists (select 1 from products where name = 'Oreo');
+
 update products
 set name = 'Classic',
     description = 'Soft, buttery dough with our signature cinnamon swirl.',

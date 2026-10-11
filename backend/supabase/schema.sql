@@ -899,3 +899,87 @@ revoke all on function public.send_staff_message(text, text, uuid) from public, 
 revoke all on function public.list_staff_messages() from public, anon;
 grant execute on function public.send_staff_message(text, text, uuid) to authenticated;
 grant execute on function public.list_staff_messages() to authenticated;
+
+-- BAKER MENU MANAGEMENT: bakers can add flavours and remove them from sale.
+-- Removing only deactivates (order history is preserved); only admins can
+-- permanently delete a flavour.
+create or replace function public.create_product(
+  p_name text,
+  p_description text,
+  p_price_cents int,
+  p_emoji text,
+  p_category text,
+  p_stock_daily int
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  clean_name text := trim(coalesce(p_name, ''));
+  new_id uuid;
+begin
+  if not public.has_staff_role(array['admin', 'baker']) then
+    raise exception 'Only bakers or admins can add flavours.';
+  end if;
+
+  if char_length(clean_name) < 2 or char_length(clean_name) > 60 then
+    raise exception 'Flavour name must be 2–60 characters.';
+  end if;
+
+  if exists (select 1 from public.products where lower(name) = lower(clean_name)) then
+    raise exception 'That flavour already exists — reactivate it from the stock board instead.';
+  end if;
+
+  if p_price_cents is null or p_price_cents < 100 or p_price_cents > 100000 then
+    raise exception 'Price must be between ₱1 and ₱1,000.';
+  end if;
+
+  if p_stock_daily is null or p_stock_daily < 0 or p_stock_daily > 500 then
+    raise exception 'Daily stock must be between 0 and 500.';
+  end if;
+
+  insert into public.products (name, description, price_cents, emoji, category, stock_daily, is_active)
+  values (
+    clean_name,
+    trim(coalesce(p_description, '')),
+    p_price_cents,
+    nullif(trim(coalesce(p_emoji, '')), ''),
+    nullif(trim(coalesce(p_category, '')), ''),
+    p_stock_daily,
+    true
+  )
+  returning id into new_id;
+
+  update public.products
+  set emoji = '🥮', category = 'signature'
+  where id = new_id and (emoji is null or category is null);
+
+  return new_id;
+end;
+$$;
+
+create or replace function public.delete_product(p_product_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_staff_role(array['admin']) then
+    raise exception 'Only an admin can permanently delete a flavour. Bakers can remove it from sale instead.';
+  end if;
+
+  delete from public.products where id = p_product_id;
+
+  if not found then
+    raise exception 'That flavour was not found.';
+  end if;
+end;
+$$;
+
+revoke all on function public.create_product(text, text, int, text, text, int) from public, anon;
+revoke all on function public.delete_product(uuid) from public, anon;
+grant execute on function public.create_product(text, text, int, text, text, int) to authenticated;
+grant execute on function public.delete_product(uuid) to authenticated;

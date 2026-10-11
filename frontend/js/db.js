@@ -200,6 +200,27 @@ window.TasteSeeDB = {
     const { error } = await client.rpc("resolve_stock_notice", { p_notice_id: id });
     if (error) throw error;
   },
+  createProduct: async ({ name, description, priceCents, emoji, category, stockDaily }) => {
+    const cleanName = String(name || "").trim();
+    const price = Number(priceCents);
+    const stock = Number(stockDaily);
+    if (cleanName.length < 2 || cleanName.length > 60) throw new Error("Flavour name must be 2–60 characters.");
+    if (!Number.isInteger(price) || price < 100 || price > 100000) throw new Error("Price must be between ₱1 and ₱1,000.");
+    if (!Number.isInteger(stock) || stock < 0 || stock > 500) throw new Error("Daily stock must be between 0 and 500.");
+    const { client } = await requireStaff(["admin", "baker"]);
+    const { error } = await client.rpc("create_product", {
+      p_name: cleanName, p_description: String(description || "").trim().slice(0, 200),
+      p_price_cents: price, p_emoji: String(emoji || "").trim().slice(0, 8) || null,
+      p_category: String(category || "").trim().slice(0, 30) || null, p_stock_daily: stock,
+    });
+    if (error) throw error;
+  },
+  deleteProduct: async id => {
+    if (!id) throw new Error("Choose a flavour to delete.");
+    const { client } = await requireStaff(["admin"]);
+    const { error } = await client.rpc("delete_product", { p_product_id: id });
+    if (error) throw error;
+  },
   sendStaffMessage: async ({ targetRole, body, orderId }) => {
     const text = String(body || "").trim();
     if (!["admin", "baker", "driver"].includes(targetRole)) throw new Error("Choose who to message.");

@@ -51,6 +51,19 @@
     </div>
     <div id="stockError" role="alert" class="mt-4 hidden rounded-xl bg-rose-50 p-3 text-sm text-rose-800"></div>
     <div id="stockStatus" class="mt-3 text-xs text-stone-500"></div>
+    <details class="mt-3 rounded-2xl border border-sky-100 bg-white">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-bold text-sky-800">＋ Add a new flavour</summary>
+      <form onsubmit="addFlavour(event)" class="grid gap-2 border-t border-sky-100 p-4 sm:grid-cols-2">
+        <label class="text-xs font-semibold">Flavour name *<input id="newName" maxlength="60" placeholder="e.g. Ube Halaya" required class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal" /></label>
+        <label class="text-xs font-semibold">Price (₱) *<input id="newPrice" type="number" min="1" max="1000" step="0.5" placeholder="e.g. 120" required class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal" /></label>
+        <label class="text-xs font-semibold">Emoji<input id="newEmoji" maxlength="8" placeholder="🍠" class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal" /></label>
+        <label class="text-xs font-semibold">Category<select id="newCategory" class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal"><option value="signature">signature</option><option value="classic">classic</option><option value="seasonal">seasonal</option><option value="limited">limited</option></select></label>
+        <label class="text-xs font-semibold">Daily stock<input id="newStock" type="number" min="0" max="500" step="1" value="30" class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal" /></label>
+        <label class="text-xs font-semibold">Description<input id="newDesc" maxlength="200" placeholder="Short tasty description" class="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm font-normal" /></label>
+        <div class="sm:col-span-2 flex items-center gap-3"><button id="newSubmit" class="rounded-xl bg-sky-600 px-5 py-3 text-sm font-bold text-white">Add flavour</button><span id="newStatus" class="text-xs text-stone-500"></span></div>
+        <div id="newError" role="alert" class="sm:col-span-2 hidden text-sm text-rose-700"></div>
+      </form>
+    </details>
     <div id="stockBoard" class="mt-3 grid gap-3 md:grid-cols-2"></div>
   </section>
 
@@ -127,8 +140,12 @@ function renderStock(){
         <button onclick="adjustStock('${p.id}',-1)" class="rounded-lg border px-4 py-2 text-lg font-black leading-none" aria-label="Decrease stock">−</button>
         <span class="min-w-[3rem] text-center text-xl font-black">${p.stock_daily}</span>
         <button onclick="adjustStock('${p.id}',1)" class="rounded-lg border px-4 py-2 text-lg font-black leading-none" aria-label="Increase stock">+</button>
-        <span class="ml-auto text-[11px] text-stone-400">daily stock</span>
+        <span class="ml-auto flex gap-2">
+          ${p.is_active?`<button onclick="removeFlavour('${p.id}')" class="rounded-lg border border-stone-200 px-3 py-2 text-xs font-bold text-stone-500">Remove</button>`:""}
+          ${isAdmin()?`<button onclick="deleteFlavour('${p.id}')" class="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600">Delete</button>`:""}
+        </span>
       </div>
+      <div class="mt-1 text-right text-[11px] text-stone-400">daily stock</div>
     </article>`).join("")||`<div class="rounded-2xl border border-dashed border-stone-300 bg-white p-8 text-center md:col-span-2">No products found.</div>`;
   $("noticeProduct").innerHTML=`<option value=""> whole kitchen</option>`+stockCache.map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join("");
 }
@@ -140,7 +157,13 @@ async function loadStock(){
 async function saveStock(id,stock,isActive){
   $("stockStatus").textContent="Saving…";
   try { await TasteSeeDB.updateProductStock(id,stock,isActive); $("stockStatus").textContent="Saved ✓ live in store"; }
-  catch(e){ $("stockStatus").textContent=""; $("stockError").textContent=`Could not save stock: ${e.message}`; $("stockError").classList.remove("hidden"); await loadStock(); }
+  catch(e){
+    $("stockStatus").textContent="";
+    const msg=/function|does not exist|schema cache/i.test(e.message)
+      ? `${e.message} — the database is behind: ask the admin to re-run backend/supabase/schema.sql, then reload this page.`
+      : e.message;
+    $("stockError").textContent=`Could not save stock: ${msg}`; $("stockError").classList.remove("hidden"); await loadStock();
+  }
 }
 async function adjustStock(id,delta){
   const item=stockCache.find(p=>p.id===id); if(!item) return;
@@ -153,6 +176,37 @@ async function toggleAvailable(id){
   const item=stockCache.find(p=>p.id===id); if(!item) return;
   item.is_active=!item.is_active; renderStock();
   await saveStock(id,item.stock_daily,item.is_active);
+}
+async function removeFlavour(id){
+  const item=stockCache.find(p=>p.id===id); if(!item||!item.is_active) return;
+  if(!confirm(`Remove ${item.name} from sale? It stays in order history and can be made available again.`)) return;
+  item.is_active=false; renderStock();
+  await saveStock(id,item.stock_daily,false);
+}
+async function deleteFlavour(id){
+  const item=stockCache.find(p=>p.id===id); if(!item) return;
+  if(!confirm(`Permanently delete ${item.name}? Past orders keep its name, but the flavour is gone for good.`)) return;
+  $("stockError").classList.add("hidden"); $("stockStatus").textContent="Deleting…";
+  try { await TasteSeeDB.deleteProduct(id); $("stockStatus").textContent="Deleted"; await loadStock(); }
+  catch(e){ $("stockStatus").textContent=""; $("stockError").textContent=`Could not delete: ${e.message}`; $("stockError").classList.remove("hidden"); }
+}
+async function addFlavour(event){
+  event.preventDefault();
+  $("newError").classList.add("hidden"); $("newSubmit").disabled=true; $("newStatus").textContent="Adding…";
+  try {
+    const pesos=Number($("newPrice").value);
+    if(!Number.isFinite(pesos)||pesos<1||pesos>1000) throw new Error("Price must be between ₱1 and ₱1,000.");
+    await TasteSeeDB.createProduct({
+      name:$("newName").value, description:$("newDesc").value,
+      priceCents:Math.round(pesos*100), emoji:$("newEmoji").value||"🥮",
+      category:$("newCategory").value, stockDaily:$("newStock").value,
+    });
+    ["newName","newPrice","newEmoji","newDesc"].forEach(id=>{$(id).value="";});
+    $("newStock").value="30"; $("newStatus").textContent="Added ✓ live in store";
+    await loadStock();
+  }
+  catch(e){ $("newError").textContent=e.message; $("newError").classList.remove("hidden"); $("newStatus").textContent=""; }
+  finally { $("newSubmit").disabled=false; }
 }
 function renderNotices(notices){
   $("noticeList").innerHTML=notices.map(n=>`
@@ -181,7 +235,8 @@ async function sendNotice(event){
   catch(e){ $("noticeError").textContent=e.message; $("noticeError").classList.remove("hidden"); $("noticeStatus").textContent=""; }
   finally { $("noticeSubmit").disabled=false; }
 }
-let myEmail="";
+let myEmail="",myRole="";
+function isAdmin(){ return myRole==="admin"; }
 function renderChat(messages){
   const ordered=[...messages].reverse();
   $("chatThread").innerHTML=ordered.map(m=>{
@@ -218,7 +273,7 @@ async function init(){
   if(!staff) return;
   $("staffGate").classList.add("hidden"); $("bakerWorkspace").classList.remove("hidden");
   $("signOutBtn").classList.remove("hidden"); $("staffIdentity").textContent=`${staff.email} · ${staff.role}`;
-  myEmail=staff.email||"";
+  myEmail=staff.email||""; myRole=staff.role||"";
   await loadQueue(); await loadStock(); await loadNotices(); await loadChat();
   setInterval(()=>{ loadQueue(); loadNotices(true); loadChat(true); },30000);
 }

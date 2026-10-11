@@ -161,6 +161,45 @@ window.TasteSeeDB = {
     if (error) throw error;
     if (!data) throw new Error("The order was not updated. Your account may not have permission, or its status has changed.");
   },
+  staffProducts: async () => {
+    const { client } = await requireStaff(["admin", "baker"]);
+    const { data, error } = await client.from("products")
+      .select("id,name,price_cents,emoji,stock_daily,is_active").order("name");
+    if (error) throw error;
+    return data || [];
+  },
+  updateProductStock: async (id, stockDaily, isActive) => {
+    const stock = Number(stockDaily);
+    if (!id || !Number.isInteger(stock) || stock < 0 || stock > 500) {
+      throw new Error("Daily stock must be a whole number from 0 to 500.");
+    }
+    const { client } = await requireStaff(["admin", "baker"]);
+    const { error } = await client.rpc("update_product_stock", {
+      p_product_id: id, p_stock_daily: stock, p_is_active: !!isActive,
+    });
+    if (error) throw error;
+  },
+  createStockNotice: async ({ productId, kind, message }) => {
+    const text = String(message || "").trim();
+    if (!["stop_restock", "low_stock", "note"].includes(kind)) throw new Error("Choose a notice type.");
+    if (text.length < 3 || text.length > 280) throw new Error("Message must be 3–280 characters.");
+    const { client } = await requireStaff(["admin", "baker"]);
+    const { error } = await client.rpc("create_stock_notice", {
+      p_product_id: productId || null, p_kind: kind, p_message: text,
+    });
+    if (error) throw error;
+  },
+  stockNotices: async () => {
+    const { client } = await requireStaff(["admin", "baker"]);
+    const { data, error } = await client.rpc("list_stock_notices");
+    if (error) throw error;
+    return data || [];
+  },
+  resolveStockNotice: async id => {
+    const { client } = await requireStaff(["admin"]);
+    const { error } = await client.rpc("resolve_stock_notice", { p_notice_id: id });
+    if (error) throw error;
+  },
   assignDriver: async orderId => {
     const { client, user } = await requireStaff(["driver"]);
     const { data, error } = await client.from("orders")

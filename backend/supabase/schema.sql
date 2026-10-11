@@ -652,3 +652,144 @@ create policy "Customers delete own community moment photos" on storage.objects
     and not (select public.has_staff_role(array['admin', 'baker', 'driver']))
   );
 grant insert, delete on storage.objects to authenticated;
+
+-- BAKER STOCK BOARD + KITCHEN NOTICES
+-- Bakers see live stock, adjust daily availability, and message the admin
+-- (for example: stop restocking a flavour). All writes go through RPCs so
+-- bakers can never touch prices, orders, or other staff rows.
+create table if not exists public.stock_notices (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid not null references auth.users(id) on delete cascade,
+  product_id uuid references public.products(id) on delete set null,
+  kind text not null check (kind in ('stop_restock', 'low_stock', 'note')),
+  message text not null check (char_length(message) between 3 and 280),
+  is_resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists stock_notices_created_at_idx
+  on public.stock_notices (created_at desc);
+
+alter table public.stock_notices enable row level security;
+revoke all on public.stock_notices from anon, authenticated;
+
+create or replace function public.update_product_stock(
+  p_product_id uuid,
+  p_stock_daily int,
+  p_is_active boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_staff_role(array['admin', 'baker']) then
+    raise exception 'Only bakers or admins can update stock.';
+  end if;
+
+  if p_stock_daily is null or p_stock_daily < 0 or p_stock_daily > 500 then
+    raise exception 'Daily stock must be between 0 and 500.';
+  end if;
+
+  update public.products
+  set stock_daily = p_stock_daily,
+      is_active = coalesce(p_is_active, is_active)
+  where id = p_product_id;
+
+  if not found then
+    raise exception 'That product was not found.';
+  end if;
+end;
+$$;
+
+create or replace function public.create_stock_notice(
+  p_product_id uuid,
+  p_kind text,
+  p_message text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  clean_message text := trim(coalesce(p_message, ''));
+begin
+  if not public.has_staff_role(array['admin', 'baker']) then
+    raise exception 'Only bakers or admins can message the kitchen board.';
+  end if;
+
+  if p_kind is null or p_kind not in ('stop_restock', 'low_stock', 'note')
+    or char_length(clean_message) < 3 or char_length(clean_message) > 280 then
+    raise exception 'Choose a notice type and write 3–280 characters.';
+  end if;
+
+  if p_product_id is not null
+    and not exists (select 1 from public.products where id = p_product_id) then
+    raise exception 'That product was not found.';
+  end if;
+
+  insert into public.stock_notices (created_by, product_id, kind, message)
+  values ((select auth.uid()), p_product_id, p_kind, clean_message);
+end;
+$$;
+
+create or replace function public.list_stock_notices()
+returns table(
+  id uuid,
+  product_name text,
+  author_email text,
+  kind text,
+  message text,
+  is_resolved boolean,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_staff_role(array['admin', 'baker']) then
+    raise exception 'Only bakers or admins can read kitchen notices.';
+  end if;
+
+  return query
+  select n.id, p.name, au.email::text, n.kind, n.message, n.is_resolved, n.created_at
+  from public.stock_notices n
+  left join public.products p on p.id = n.product_id
+  join auth.users au on au.id = n.created_by
+  where public.has_staff_role(array['admin']) or n.created_by = (select auth.uid())
+  order by n.is_resolved, n.created_at desc;
+end;
+$$;
+
+create or replace function public.resolve_stock_notice(p_notice_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_staff_role(array['admin']) then
+    raise exception 'Only an admin can resolve kitchen notices.';
+  end if;
+
+  update public.stock_notices
+  set is_resolved = true
+  where id = p_notice_id and is_resolved = false;
+
+  if not found then
+    raise exception 'That notice was not found or is already resolved.';
+  end if;
+end;
+$$;
+
+revoke all on function public.update_product_stock(uuid, int, boolean) from public, anon;
+revoke all on function public.create_stock_notice(uuid, text, text) from public, anon;
+revoke all on function public.list_stock_notices() from public, anon;
+revoke all on function public.resolve_stock_notice(uuid) from public, anon;
+grant execute on function public.update_product_stock(uuid, int, boolean) to authenticated;
+grant execute on function public.create_stock_notice(uuid, text, text) to authenticated;
+grant execute on function public.list_stock_notices() to authenticated;
+grant execute on function public.resolve_stock_notice(uuid) to authenticated;

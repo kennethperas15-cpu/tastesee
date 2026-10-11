@@ -51,6 +51,12 @@
     <div id="staffAccessError" role="alert" class="mt-2 hidden text-sm text-rose-700"></div>
     <div id="staffAccessList" class="mt-3 space-y-1 text-sm"></div>
   </section>
+  <section class="rounded-xl border bg-white p-4">
+    <div class="flex items-center gap-2"><h2 class="font-bold flex-1">🔔 Kitchen notices <span id="noticeCount" class="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 hidden"></span></h2><button onclick="loadNotices()" class="rounded-lg border px-3 py-2 text-xs font-bold">↻ Refresh</button></div>
+    <p class="mt-1 text-sm text-stone-500">Messages from bakers — stop-restock requests, low-stock flags, notes.</p>
+    <div id="noticeError" role="alert" class="mt-2 hidden text-sm text-rose-700"></div>
+    <div id="noticeList" class="mt-3 space-y-2 text-sm"></div>
+  </section>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
     <div class="bg-white rounded-xl p-3 sm:p-4 border min-w-0"><div class="text-[11px] sm:text-xs text-stone-400 truncate">REVENUE</div><div id="kRev" class="text-xl sm:text-2xl font-black truncate">—</div></div>
     <div class="bg-white rounded-xl p-3 sm:p-4 border min-w-0"><div class="text-[11px] sm:text-xs text-stone-400 truncate">ORDERS</div><div id="kOrd" class="text-xl sm:text-2xl font-black truncate">—</div></div>
@@ -142,7 +148,7 @@ async function init(){
   let orders,pools;
   try {
     [orders,pools]=await Promise.all([TasteSeeDB.orders(),TasteSeeDB.pools()]);
-    await loadStaffAccess();
+    await loadStaffAccess(); await loadNotices();
   }
   catch(e){ $("dashboardError").textContent=`Dashboard data could not be loaded: ${e.message}`; $("dashboardError").classList.remove("hidden"); return; }
   $("dashboardError").classList.add("hidden");
@@ -191,6 +197,32 @@ async function loadStaffAccess(){
   const staff=await TasteSeeDB.staffAccess();
   $("staffAccessList").innerHTML=staff.map(account=>`<div class="flex flex-wrap items-center justify-between gap-2 border-t py-2"><span>${escapeHTML(account.email)}</span><b class="capitalize">${escapeHTML(account.role)}</b><button type="button" data-email="${escapeHTML(account.email)}" onclick="revokeStaffRole(this.dataset.email)" class="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Revoke access</button></div>`).join("")
     ||"<div class='text-sm text-stone-500'>No staff accounts assigned.</div>";
+}
+const NOTICE_LABEL={stop_restock:"🛑 Stop restock",low_stock:"⚠️ Running low",note:"💬 Note"};
+async function loadNotices(){
+  $("noticeError").classList.add("hidden");
+  try {
+    const notices=await TasteSeeDB.stockNotices();
+    const open=notices.filter(n=>!n.is_resolved).length;
+    $("noticeCount").classList.toggle("hidden",open===0);
+    $("noticeCount").textContent=open?`${open} new`:"";
+    $("noticeList").innerHTML=notices.map(n=>`
+      <div class="rounded-lg border ${n.is_resolved?"border-stone-200 bg-stone-50":"border-sky-200 bg-sky-50/50"} p-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <b>${NOTICE_LABEL[n.kind]||escapeHTML(n.kind)}</b>
+          ${n.product_name?`<span class="text-stone-500">· ${escapeHTML(n.product_name)}</span>`:""}
+          <span class="text-xs text-stone-400">from ${escapeHTML(n.author_email||"kitchen")} · ${new Date(n.created_at).toLocaleString()}</span>
+          ${n.is_resolved?`<span class="ml-auto text-xs font-bold text-stone-400">Resolved</span>`:`<button onclick="resolveNotice('${n.id}')" class="ml-auto rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white">Mark resolved</button>`}
+        </div>
+        <p class="mt-1 break-words">${escapeHTML(n.message)}</p>
+      </div>`).join("")||"<div class='text-sm text-stone-500'>No kitchen notices.</div>";
+  }
+  catch(e){ $("noticeError").textContent=`Could not load notices: ${e.message}`; $("noticeError").classList.remove("hidden"); }
+}
+async function resolveNotice(id){
+  $("noticeError").classList.add("hidden");
+  try { await TasteSeeDB.resolveStockNotice(id); await loadNotices(); }
+  catch(e){ $("noticeError").textContent=e.message; $("noticeError").classList.remove("hidden"); }
 }
 async function assignStaffRole(event){
   event.preventDefault();

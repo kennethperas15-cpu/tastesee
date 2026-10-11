@@ -27,19 +27,20 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Require and inject Supabase public configuration
-        env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Verify public Supabase configuration
         run: |
           node <<'NODE'
           const fs = require("node:fs");
           const path = require("node:path");
-          const url = process.env.SUPABASE_URL;
-          const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-          if (!url || !key) {
-            throw new Error("Set the SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY repository variables before deployment.");
+          const configPath = path.join(process.env.GITHUB_WORKSPACE, "frontend/js/supabase-config.js");
+          const config = fs.readFileSync(configPath, "utf8");
+          const urlMatch = config.match(/window\.TASTESEE_SUPABASE_URL\s*=\s*("(?:[^"\\]|\\.)*")\s*;/);
+          const keyMatch = config.match(/window\.TASTESEE_SUPABASE_ANON_KEY\s*=\s*("(?:[^"\\]|\\.)*")\s*;/);
+          if (!urlMatch || !keyMatch) {
+            throw new Error("Supabase URL and publishable key must be configured in frontend/js/supabase-config.js.");
           }
+          const url = JSON.parse(urlMatch[1]);
+          const key = JSON.parse(keyMatch[1]);
           let parsedUrl;
           try {
             parsedUrl = new URL(url);
@@ -49,25 +50,22 @@ jobs:
           if (parsedUrl.protocol !== "https:") {
             throw new Error("SUPABASE_URL must use HTTPS.");
           }
-          const config = [
-            `window.TASTESEE_SUPABASE_URL = ${JSON.stringify(parsedUrl.origin)};`,
-            `window.TASTESEE_SUPABASE_ANON_KEY = ${JSON.stringify(key)};`,
-            "",
-            "if (!window.supabase) {",
-            '  console.error("Taste & See could not load the Supabase client library.");',
-            "} else {",
-            "  window.supabaseClient = window.supabase.createClient(",
-            "    window.TASTESEE_SUPABASE_URL,",
-            "    window.TASTESEE_SUPABASE_ANON_KEY",
-            "  );",
-            "}",
-            "",
-          ].join("\n");
-          fs.writeFileSync(
-            path.join(process.env.GITHUB_WORKSPACE, "frontend/js/supabase-config.js"),
-            config,
-            "utf8"
-          );
+          if (key.startsWith("sb_secret_") || key.startsWith("service_role")) {
+            throw new Error("A Supabase secret/service-role key must never be deployed to the browser.");
+          }
+          const isPublishable = key.startsWith("sb_publishable_");
+          let isLegacyAnon = false;
+          if (!isPublishable && key.split(".").length === 3) {
+            try {
+              isLegacyAnon = JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString("utf8")).role === "anon";
+            } catch {
+              isLegacyAnon = false;
+            }
+          }
+          if (!isPublishable && !isLegacyAnon) {
+            throw new Error("The browser config must contain a Supabase publishable key or a legacy anon key.");
+          }
+          console.log(`Verified public Supabase configuration for ${parsedUrl.origin}.`);
           NODE
 
       - name: Upload site artifact

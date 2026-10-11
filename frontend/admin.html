@@ -57,6 +57,24 @@
     <div id="noticeError" role="alert" class="mt-2 hidden text-sm text-rose-700"></div>
     <div id="noticeList" class="mt-3 space-y-2 text-sm"></div>
   </section>
+  <section class="rounded-xl border bg-white p-4">
+    <div class="flex items-center gap-2"><h2 class="font-bold flex-1">💬 Staff chat</h2>
+      <div class="flex gap-1 text-xs font-bold">
+        <button onclick="setChatFilter('all')" data-chat-filter="all" class="chat-filter rounded-lg px-2.5 py-1.5 bg-stone-900 text-white">All</button>
+        <button onclick="setChatFilter('baker')" data-chat-filter="baker" class="chat-filter rounded-lg px-2.5 py-1.5 border">Bakers</button>
+        <button onclick="setChatFilter('driver')" data-chat-filter="driver" class="chat-filter rounded-lg px-2.5 py-1.5 border">Riders</button>
+      </div>
+      <button onclick="loadChat()" class="rounded-lg border px-3 py-2 text-xs font-bold">↻</button>
+    </div>
+    <p class="mt-1 text-sm text-stone-500">Two-way chat with kitchen and riders. Replies go to everyone in that role's channel.</p>
+    <div id="chatError" role="alert" class="mt-2 hidden text-sm text-rose-700"></div>
+    <div id="chatThread" class="mt-3 max-h-96 space-y-2 overflow-y-auto rounded-xl border p-3"></div>
+    <form onsubmit="sendChat(event)" class="mt-3 flex flex-col sm:flex-row gap-2">
+      <select id="chatTarget" class="rounded-lg border px-3 py-2.5 text-sm font-bold"><option value="baker">Reply to bakers</option><option value="driver">Reply to riders</option><option value="admin">Note to admins</option></select>
+      <input id="chatInput" maxlength="500" placeholder="Write a reply…" autocomplete="off" class="flex-1 rounded-lg border px-3 py-2.5 text-sm" />
+      <button id="chatSubmit" class="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-bold text-white">Send</button>
+    </form>
+  </section>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
     <div class="bg-white rounded-xl p-3 sm:p-4 border min-w-0"><div class="text-[11px] sm:text-xs text-stone-400 truncate">REVENUE</div><div id="kRev" class="text-xl sm:text-2xl font-black truncate">—</div></div>
     <div class="bg-white rounded-xl p-3 sm:p-4 border min-w-0"><div class="text-[11px] sm:text-xs text-stone-400 truncate">ORDERS</div><div id="kOrd" class="text-xl sm:text-2xl font-black truncate">—</div></div>
@@ -145,10 +163,11 @@ async function init(){
   if(!staff){ $("modeBadge").textContent="· admin access required"; return; }
   $("staffGate").classList.add("hidden"); $("adminWorkspace").classList.remove("hidden");
   $("signOutBtn").classList.remove("hidden"); $("modeBadge").textContent="· "+escapeHTML(staff.email);
+  myAdminEmail=staff.email||"";
   let orders,pools;
   try {
     [orders,pools]=await Promise.all([TasteSeeDB.orders(),TasteSeeDB.pools()]);
-    await loadStaffAccess(); await loadNotices();
+    await loadStaffAccess(); await loadNotices(); await loadChat();
   }
   catch(e){ $("dashboardError").textContent=`Dashboard data could not be loaded: ${e.message}`; $("dashboardError").classList.remove("hidden"); return; }
   $("dashboardError").classList.add("hidden");
@@ -223,6 +242,43 @@ async function resolveNotice(id){
   $("noticeError").classList.add("hidden");
   try { await TasteSeeDB.resolveStockNotice(id); await loadNotices(); }
   catch(e){ $("noticeError").textContent=e.message; $("noticeError").classList.remove("hidden"); }
+}
+let chatFilter="all", myAdminEmail="";
+function setChatFilter(f){
+  chatFilter=f;
+  document.querySelectorAll(".chat-filter").forEach(b=>{
+    const on=b.dataset.chatFilter===f;
+    b.className=`chat-filter rounded-lg px-2.5 py-1.5 text-xs font-bold ${on?"bg-stone-900 text-white":"border"}`;
+  });
+  loadChat();
+}
+function renderChat(messages){
+  const ordered=[...messages].filter(m=>chatFilter==="all"||m.target_role===chatFilter||(m.sender_email||"").toLowerCase()===myAdminEmail.toLowerCase()).reverse();
+  $("chatThread").innerHTML=ordered.map(m=>{
+    const mine=(m.sender_email||"").toLowerCase()===myAdminEmail.toLowerCase();
+    const channel=m.target_role==="baker"?"bakers":m.target_role==="driver"?"riders":"admins";
+    return `<div class="flex ${mine?"justify-end":"justify-start"}">
+      <div class="max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine?"bg-stone-900 text-white":"bg-stone-100 text-stone-800"}">
+        <div class="text-[11px] opacity-70">${mine?"You":escapeHTML(m.sender_email||"?")} · to ${channel}${m.order_id?` · #${escapeHTML(String(m.order_id).slice(0,8))}`:""} · ${new Date(m.created_at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</div>
+        <div class="break-words">${escapeHTML(m.body)}</div>
+      </div>
+    </div>`;
+  }).join("")||"<div class='text-sm text-stone-400 text-center'>No messages in this channel.</div>";
+  $("chatThread").scrollTop=$("chatThread").scrollHeight;
+}
+async function loadChat(){
+  $("chatError").classList.add("hidden");
+  try { renderChat(await TasteSeeDB.staffMessages()); }
+  catch(e){ $("chatError").textContent=`Could not load chat: ${e.message}`; $("chatError").classList.remove("hidden"); }
+}
+async function sendChat(event){
+  event.preventDefault();
+  const text=$("chatInput").value.trim();
+  if(!text) return;
+  $("chatError").classList.add("hidden"); $("chatSubmit").disabled=true;
+  try { await TasteSeeDB.sendStaffMessage({ targetRole:$("chatTarget").value, body:text }); $("chatInput").value=""; await loadChat(); }
+  catch(e){ $("chatError").textContent=e.message; $("chatError").classList.remove("hidden"); }
+  finally { $("chatSubmit").disabled=false; }
 }
 async function assignStaffRole(event){
   event.preventDefault();

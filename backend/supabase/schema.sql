@@ -793,3 +793,109 @@ grant execute on function public.update_product_stock(uuid, int, boolean) to aut
 grant execute on function public.create_stock_notice(uuid, text, text) to authenticated;
 grant execute on function public.list_stock_notices() to authenticated;
 grant execute on function public.resolve_stock_notice(uuid) to authenticated;
+
+-- STAFF MESSAGING: two-way chat between bakers/riders and the admin.
+-- Bakers and riders can only message the admin; the admin can reply to the
+-- baker channel, the rider channel, or fellow admins. Each role only ever
+-- sees its own channel plus messages it sent.
+create table if not exists public.staff_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  target_role text not null check (target_role in ('admin', 'baker', 'driver')),
+  body text not null check (char_length(body) between 1 and 500),
+  order_id uuid references public.orders(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_messages_created_at_idx
+  on public.staff_messages (created_at desc);
+create index if not exists staff_messages_target_role_idx
+  on public.staff_messages (target_role);
+
+alter table public.staff_messages enable row level security;
+revoke all on public.staff_messages from anon, authenticated;
+
+create or replace function public.send_staff_message(
+  p_target_role text,
+  p_body text,
+  p_order_id uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  sender_role text;
+  clean_body text := trim(coalesce(p_body, ''));
+begin
+  select role into sender_role
+  from public.staff_access
+  where user_id = (select auth.uid());
+
+  if sender_role is null then
+    raise exception 'Only staff accounts can send messages.';
+  end if;
+
+  if p_target_role is null
+    or p_target_role not in ('admin', 'baker', 'driver')
+    or char_length(clean_body) < 1 or char_length(clean_body) > 500 then
+    raise exception 'Choose who to message and write 1–500 characters.';
+  end if;
+
+  if sender_role <> 'admin' and p_target_role <> 'admin' then
+    raise exception 'Bakers and riders can only message the admin.';
+  end if;
+
+  if p_order_id is not null
+    and not exists (select 1 from public.orders where id = p_order_id) then
+    raise exception 'That order was not found.';
+  end if;
+
+  insert into public.staff_messages (sender_id, target_role, body, order_id)
+  values ((select auth.uid()), p_target_role, clean_body, p_order_id);
+end;
+$$;
+
+create or replace function public.list_staff_messages()
+returns table(
+  id uuid,
+  sender_email text,
+  sender_role text,
+  target_role text,
+  body text,
+  order_id uuid,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  viewer_role text;
+begin
+  select role into viewer_role
+  from public.staff_access
+  where user_id = (select auth.uid());
+
+  if viewer_role is null then
+    raise exception 'Only staff accounts can read messages.';
+  end if;
+
+  return query
+  select m.id, au.email::text, sa.role, m.target_role, m.body, m.order_id, m.created_at
+  from public.staff_messages m
+  join auth.users au on au.id = m.sender_id
+  left join public.staff_access sa on sa.user_id = m.sender_id
+  where viewer_role = 'admin'
+    or m.target_role = viewer_role
+    or m.sender_id = (select auth.uid())
+  order by m.created_at desc
+  limit 50;
+end;
+$$;
+
+revoke all on function public.send_staff_message(text, text, uuid) from public, anon;
+revoke all on function public.list_staff_messages() from public, anon;
+grant execute on function public.send_staff_message(text, text, uuid) to authenticated;
+grant execute on function public.list_staff_messages() to authenticated;

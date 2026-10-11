@@ -200,6 +200,22 @@ window.TasteSeeDB = {
     const { error } = await client.rpc("resolve_stock_notice", { p_notice_id: id });
     if (error) throw error;
   },
+  sendStaffMessage: async ({ targetRole, body, orderId }) => {
+    const text = String(body || "").trim();
+    if (!["admin", "baker", "driver"].includes(targetRole)) throw new Error("Choose who to message.");
+    if (text.length < 1 || text.length > 500) throw new Error("Message must be 1–500 characters.");
+    const { client } = await requireStaff(["admin", "baker", "driver"]);
+    const { error } = await client.rpc("send_staff_message", {
+      p_target_role: targetRole, p_body: text, p_order_id: orderId || null,
+    });
+    if (error) throw error;
+  },
+  staffMessages: async () => {
+    const { client } = await requireStaff(["admin", "baker", "driver"]);
+    const { data, error } = await client.rpc("list_staff_messages");
+    if (error) throw error;
+    return data || [];
+  },
   assignDriver: async orderId => {
     const { client, user } = await requireStaff(["driver"]);
     const { data, error } = await client.from("orders")

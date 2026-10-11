@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Taste &amp; See — Warm Cinnamon Buns</title>
+<link rel="icon" type="image/png" href="./assets/logo.png" />
+<link rel="apple-touch-icon" href="./assets/logo.png" />
+<meta property="og:image" content="./assets/logo.png" />
+<meta name="description" content="Taste & See — small-batch cinnamon buns. Classic, Tiramisu, Biscoff, and Oreo, baked fresh in Cebu City." />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/supabase-config.js"></script>
+<script src="./js/db.js"></script>
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  html { scroll-behavior: smooth; }
+  body { overflow-x: hidden; background: #fffaf3; }
+  button, a, select, input, label { touch-action: manipulation; }
+  button { min-height: 0; }
+  dialog { margin: auto; max-height: 92dvh; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .bun-card { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s ease; }
+  .bun-card:hover { transform: translateY(-7px) rotate(-.4deg); box-shadow: 0 20px 36px -24px #0369a1; }
+  .soft-button { transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease; box-shadow: 0 5px 14px rgba(91, 117, 145, .12); }
+  .soft-button:active { transform: scale(.97); }
+  .category-pill { border: 1px solid #e7e5e4; background: rgba(255,255,255,.8); color: #78716c; transition: all .2s ease; }
+  .category-pill[aria-pressed="true"] { border-color: #a5d8ed; background: #eaf8fd; color: #075985; box-shadow: inset 0 1px 3px rgba(3,105,161,.08); }
+  .bun-slot { position: relative; display: grid; min-height: 5rem; place-items: center; border: 1px dashed #d6cbbd; border-radius: 1rem; background: rgba(255,255,255,.65); color: #b9ad9e; }
+  .bun-slot.is-filled { border-style: solid; border-color: #e9d9bd; background: linear-gradient(145deg,#fff8e9,#fff); color: #8a5a32; animation: slot-pop .35s cubic-bezier(.2,.8,.2,1); }
+  .receipt-paper { max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-1.25rem); transition: max-height .75s cubic-bezier(.2,.8,.2,1), opacity .35s ease, transform .5s cubic-bezier(.2,.8,.2,1); }
+  .receipt-paper.is-open { max-height: 1500px; opacity: 1; transform: translateY(0); }
+  .receipt-sheet { background: repeating-linear-gradient(180deg,#fffefa 0,#fffefa 28px,#f2eee5 29px); box-shadow: 0 15px 35px rgba(108,88,60,.1); }
+  @keyframes slot-pop { from { transform: scale(.78) translateY(8px); opacity: .45; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .scroll-progress { transform: scaleX(0); transform-origin: left; }
+  .reveal { opacity: 0; transform: translateY(28px) scale(.985); filter: blur(5px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1), filter .7s ease; }
+  .reveal.is-visible { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  .hero-orbit { animation: orbit-float 7s ease-in-out infinite; }
+  @keyframes orbit-float { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
+  canvas { max-width: 100%; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .reveal { opacity: 1; transform: none; filter: none; }
+    .bun-slot.is-filled { animation: none; }
+  }
+  @media (max-width: 640px) {
+    dialog { margin: auto 1rem; width: calc(100vw - 2rem); }
+  }
+  .site-nav-link { color: rgba(255,255,255,.88); font-size: .8rem; font-weight: 700; transition: color .2s ease; }
+  .site-nav-link:hover { color: white; }
+  .hero-shell { padding-top: clamp(2.5rem, 7vw, 5.5rem); padding-bottom: clamp(2rem, 5vw, 4rem); }
+  .hero-title { max-width: 12ch; font-size: clamp(2.8rem, 6vw, 5.4rem); }
+  .hero-media { min-height: 360px; isolation: isolate; }
+  .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-media::after { content: ""; position: absolute; inset: 35% 0 0; background: linear-gradient(transparent, rgba(3, 40, 68, .74)); z-index: 0; pointer-events: none; }
+  .hero-media-caption { position: absolute; z-index: 1; inset: auto 1rem 1rem; color: white; text-align: left; }
+  .hero-media-logo { position: absolute; z-index: 1; top: 1rem; right: 1rem; width: 3.5rem; height: 3.5rem; border: 2px solid rgba(255,255,255,.85); border-radius: 999px; object-fit: cover; box-shadow: 0 8px 24px rgba(15,23,42,.2); }
+  .trust-strip { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .trust-item + .trust-item { border-left: 1px solid #dbeafe; }
+  .story-panel { background: linear-gradient(135deg,#eaf8fd,#fff 65%,#f4faff); }
+  @media (max-width: 640px) {
+    .hero-media { min-height: 290px; }
+    .trust-strip { grid-template-columns: 1fr; }
+    .trust-item + .trust-item { border-left: 0; border-top: 1px solid #dbeafe; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-video { display: none; }
+    .hero-media { background: #dff3ff url("./assets/logo.png") center/contain no-repeat; }
+  }
+</style>
+</head>
+<body class="bg-[#fffaf3] text-stone-800 min-h-screen">
+
+<header class="sticky top-0 z-30 bg-sky-600 text-white shadow">
+  <div id="scrollProgress" class="scroll-progress absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-sky-200 via-sky-400 to-blue-300"></div>
+  <div class="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+    <div class="relative shrink-0 grid place-items-center h-9 w-9 sm:h-10 sm:w-10 rounded-full overflow-hidden bg-white ring-2 ring-sky-200 text-lg" title="Taste & See">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" onload="this.previousSibling.remove()" onerror="this.remove()" /></div>
+    <div class="flex-1 min-w-0">
+      <div class="font-extrabold tracking-tight text-base sm:text-lg leading-none truncate">Taste &amp; See</div>
+      <div class="text-[11px] sm:text-xs opacity-70 truncate hidden sm:block">small-batch buns, big comfort</div>
+    </div>
+    <nav aria-label="Main navigation" class="hidden items-center gap-6 md:flex">
+      <a class="site-nav-link" href="#menu">Our buns</a>
+      <a class="site-nav-link" href="#orderBox">Build a box</a>
+      <a class="site-nav-link" href="#story">Our story</a>
+      <a class="site-nav-link" href="#community">Community</a>
+    </nav>
+    <div class="flex shrink-0 items-center gap-2">
+      <button id="authButton" onclick="openAuth()" class="min-h-10 rounded-full border border-white/50 px-3 py-2.5 text-xs font-bold transition hover:bg-white/10">Sign in</button>
+      <button onclick="openCheckout()" class="soft-button relative min-h-10 bg-white text-sky-800 font-bold px-3 sm:px-4 py-2.5 rounded-full text-sm whitespace-nowrap">🧺 <span class="hidden min-[420px]:inline">Review</span> <span id="cartCount" class="ml-1 inline-grid min-w-5 h-5 place-items-center rounded-full bg-amber-100 px-1 text-[11px] text-amber-900">0</span></button>
+    </div>
+  </div>
+</header>
+<!-- HERO -->
+<section id="hero" class="hero-shell mx-auto grid max-w-7xl items-center gap-8 px-3 sm:px-5 md:grid-cols-[.92fr_1.08fr] md:gap-12">
+  <div class="min-w-0 py-2">
+    <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-sky-700">✦ Baked fresh in Cebu City</div>
+    <h1 class="hero-title mt-5 font-black leading-[.98] tracking-tight">Warm cinnamon buns, <span class="text-sky-600">made to share.</span></h1>
+    <p class="mt-5 max-w-lg text-sm leading-relaxed text-stone-600 sm:text-base">Small batches, soft swirls, and four lovely flavours. Find your favourite and we’ll make it fresh for your table.</p>
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+      <a href="#menu" class="text-center rounded-full bg-sky-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-sky-700/15 transition hover:bg-sky-700">Explore the buns <span aria-hidden="true">↓</span></a>
+      <a href="#orderBox" class="rounded-full border border-sky-100 bg-white px-5 py-3.5 text-center text-sm font-bold transition hover:border-sky-400">Build your bun box</a>
+    </div>
+    <div class="mt-6 flex items-center gap-3 text-xs text-stone-500"><span class="flex -space-x-2" aria-hidden="true"><span class="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-sky-100">🌀</span><span class="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-blue-100">🍪</span><span class="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-cyan-100">☕</span></span><span>Made fresh. Shared with joy.</span></div>
+  </div>
+  <div class="hero-media relative overflow-hidden rounded-[2rem] bg-[#dff3ff] shadow-[0_24px_60px_rgba(3,105,161,.16)]">
+    <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="./assets/logo.png" aria-label="Fresh cinnamon buns being prepared">
+      <source src="./assets/ads.mp4" type="video/mp4" />
+    </video>
+    <img class="hero-media-logo" src="./assets/logo.png" alt="Taste &amp; See logo" />
+    <div class="hero-media-caption">
+      <div class="text-[11px] font-bold uppercase tracking-[.22em] text-sky-100">Fresh from our oven</div>
+      <div class="mt-1 text-2xl font-black sm:text-3xl">A little swirl. A lot of love.</div>
+      <div class="mt-2 text-sm text-white/85">Small-batch buns, baked fresh daily.</div>
+      <a href="#menu" class="mt-4 inline-flex rounded-full border border-white/70 bg-white/95 px-4 py-2 text-xs font-bold text-sky-900 transition hover:bg-white">Explore our menu</a>
+    </div>
+  </div>
+</section>
+<section aria-label="Taste & See highlights" class="mx-auto max-w-7xl px-3 pb-3 sm:px-5">
+  <div class="trust-strip overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
+    <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">4 favourite flavours</div><div class="mt-1 text-xs text-stone-500">Made fresh in small batches</div></div>
+    <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">Build a bun box</div><div class="mt-1 text-xs text-stone-500">Choose up to four favourites</div></div>
+    <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">Cebu City delivery</div><div class="mt-1 text-xs text-stone-500">Choose pickup or map-pin delivery</div></div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu" class="reveal max-w-6xl mx-auto px-3 sm:px-4 py-10 scroll-mt-20">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Four flavours, all heart</div><h2 class="mt-1 text-2xl sm:text-3xl font-black">Meet your new favourite</h2></div><p class="text-sm text-stone-500">Every bun made fresh, just for you.</p></div>
+  <div id="categoryPills" class="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Filter buns by category">
+    <button type="button" class="category-pill shrink-0 rounded-full px-4 py-2 text-xs font-bold" aria-pressed="true" onclick="filterMenu('all',this)">All buns</button>
+    <button type="button" class="category-pill shrink-0 rounded-full px-4 py-2 text-xs font-bold" aria-pressed="false" onclick="filterMenu('swirl',this)">Classic swirl</button>
+    <button type="button" class="category-pill shrink-0 rounded-full px-4 py-2 text-xs font-bold" aria-pressed="false" onclick="filterMenu('coffee',this)">Coffee-kissed</button>
+    <button type="button" class="category-pill shrink-0 rounded-full px-4 py-2 text-xs font-bold" aria-pressed="false" onclick="filterMenu('crunchy',this)">Crunchy</button>
+    <button type="button" class="category-pill shrink-0 rounded-full px-4 py-2 text-xs font-bold" aria-pressed="false" onclick="filterMenu('chocolate',this)">Chocolate</button>
+  </div>
+  <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mt-5"></div>
+</section>
+
+<!-- FOUR-SLOT BOX AND RECEIPT CHECKOUT -->
+<section id="orderBox" class="reveal mx-auto max-w-6xl px-3 sm:px-4 py-8 scroll-mt-20">
+  <div class="overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#fff4df] via-white to-[#edf8fc] p-4 shadow-[0_18px_45px_rgba(111,91,65,.08)] sm:p-7">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">A little box of happy</div><h2 class="mt-1 text-2xl font-black sm:text-3xl">Build your bun box</h2><p class="mt-1 text-sm text-stone-500">₱65 each · 2 for ₱130 · 4 for ₱250.</p><p class="mt-1 text-xs text-stone-500">Choose up to four buns; mix and match your favourite flavours.</p></div>
+      <span id="boxCount" class="self-start rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-600 sm:self-auto">0 of 4 buns</span>
+    </div>
+    <div id="boxSlots" class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Your four-slot cinnamon bun box"></div>
+    <div class="mt-4 flex justify-center">
+      <button id="reviewButton" onclick="reviewOrder()" class="soft-button rounded-full bg-sky-600 px-7 py-3.5 text-sm font-extrabold text-white hover:bg-sky-700">Review order <span aria-hidden="true">↓</span></button>
+    </div>
+    <div id="receiptPanel" class="receipt-paper" aria-hidden="true">
+      <div class="receipt-sheet mx-auto mt-6 max-w-2xl border-x border-dashed border-stone-300 px-4 py-5 sm:px-8 sm:py-7">
+        <div class="text-center"><div class="text-xs font-bold uppercase tracking-[.25em] text-stone-400">Taste &amp; See · Cebu City</div><h3 class="mt-1 text-xl font-black">Your little order</h3><div class="mt-1 text-xs text-stone-500">Freshly made, packed with love</div><div class="mt-2 text-xs text-stone-500">Prepared for <b id="receiptCustomer">Guest</b></div></div>
+        <div id="cartItems" class="mt-4 space-y-2"></div>
+        <div class="mt-4 space-y-2 border-t border-dashed border-stone-300 pt-4 text-sm">
+          <div class="flex justify-between"><span>Subtotal</span><b id="tSub">₱0.00</b></div>
+          <div id="boxDiscountRow" class="hidden flex justify-between text-sky-700"><span>Four-bun box savings</span><b id="tDisc">−₱0.00</b></div>
+          <div class="flex justify-between"><span>Delivery</span><b id="tDel">₱0.00</b></div>
+          <div class="flex justify-between border-t border-stone-200 pt-2 text-lg"><span class="font-black">Total</span><b id="tTot">₱0.00</b></div>
+          <div class="text-[11px] text-stone-400">Box price is based on the number of cinnamon buns.</div>
+        </div>
+        <div class="mt-5 border-t border-dashed border-stone-300 pt-5">
+          <h4 class="font-black">Where should we bring it?</h4>
+          <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input id="coName" placeholder="Full name *" autocomplete="name" oninput="updateReceiptCustomer()" class="w-full rounded-xl border border-stone-200 bg-white/90 px-3 py-3 text-sm" />
+            <input id="coPhone" placeholder="Phone" autocomplete="tel" class="w-full rounded-xl border border-stone-200 bg-white/90 px-3 py-3 text-sm" />
+          </div>
+          <div class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="pickup" checked onchange="coKind()" /> 🏃 Pickup (free)</label>
+            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="delivery" onchange="coKind()" /> 🛵 Delivery (₱40 + ₱12/km)</label>
+          </div>
+          <div class="mt-3 rounded-xl bg-amber-50/80 p-3 text-sm">
+            <div class="flex justify-between"><span>Delivery fee</span><b id="coFee">₱0.00</b></div>
+            <div class="mt-1 flex justify-between text-base"><span class="font-bold">Order total</span><b id="coTotal">₱0.00</b></div>
+          </div>
+          <div id="coDeliveryFields" class="hidden">
+            <label for="coAddr" class="mt-3 block text-xs font-bold text-stone-600">DELIVERY ADDRESS OR LANDMARK IN CEBU CITY</label>
+            <input id="coAddr" placeholder="Enter your address or landmark" autocomplete="street-address" class="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-3 text-sm" />
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onclick="pinCurrentLocation()" class="rounded-full border border-sky-200 bg-white px-4 py-2.5 text-xs font-bold text-sky-800">◎ Use my location</button>
+              <div id="coDistance" class="text-xs text-stone-600">Choose an address or drop-off pin to see the delivery fee.</div>
+            </div>
+            <div id="coMap" class="mt-2 h-64 w-full overflow-hidden rounded-2xl border border-sky-100 bg-sky-50" aria-label="Choose delivery location on map"></div>
+            <div id="coMapNotice" role="status" class="mt-1 text-xs text-stone-500">Tap the map to drop your pin; the blue marker is the bakery.</div>
+          </div>
+          <p class="mt-3 rounded-xl bg-white/80 p-3 text-xs text-stone-500">Online payments are not available yet. No payment details are collected and no online charge is made.</p>
+          <div id="coErr" role="alert" class="mt-2 hidden text-sm text-rose-600"></div>
+          <button onclick="placeOrder()" id="payBtn" class="soft-button mt-4 w-full rounded-full bg-sky-600 py-3.5 text-sm font-extrabold text-white hover:bg-sky-700">Place my order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OUR STORY -->
+<section id="story" class="reveal mx-auto max-w-7xl scroll-mt-20 px-3 py-10 sm:px-5">
+  <div class="story-panel grid overflow-hidden rounded-[2rem] border border-sky-100 md:grid-cols-[1fr_1.15fr]">
+    <div class="flex flex-col justify-center p-5 sm:p-8 lg:p-10">
+      <div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">A little comfort, made fresh</div>
+      <h2 class="mt-2 text-2xl font-black leading-tight sm:text-3xl">Good days start with a warm swirl.</h2>
+      <p class="mt-3 max-w-xl text-sm leading-relaxed text-stone-600">Taste &amp; See brings together soft cinnamon buns, favourite flavours, and the joy of sharing something freshly baked. Choose a single treat, build a four-bun box, and share your moment with the community.</p>
+      <a href="#menu" class="mt-5 inline-flex min-h-11 w-fit items-center rounded-full bg-sky-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-sky-700">Find your flavour <span class="ml-2" aria-hidden="true">→</span></a>
+    </div>
+    <div class="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-6">
+      <div class="col-span-2 rounded-2xl border border-white bg-white/80 p-4 sm:p-5">
+        <div class="flex items-center gap-3">
+          <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-sky-100 text-2xl" aria-hidden="true">🥮</span>
+          <div><div class="font-black text-stone-800">A box with room for your favourites</div><p class="mt-1 text-xs leading-relaxed text-stone-500">Pick up to four buns, mix your favourite flavours, then review everything on one clear receipt.</p></div>
+        </div>
+      </div>
+      <a href="#orderBox" class="rounded-2xl border border-white bg-white/80 p-4 transition hover:-translate-y-1 hover:shadow-md sm:p-5">
+        <div class="text-xl" aria-hidden="true">🥮</div><div class="mt-2 text-sm font-black text-sky-900">Your four-bun box</div><p class="mt-1 text-xs leading-relaxed text-stone-500">Choose up to four fresh buns and review your order before checkout.</p>
+      </a>
+      <a href="#community" class="rounded-2xl border border-white bg-white/80 p-4 transition hover:-translate-y-1 hover:shadow-md sm:p-5">
+        <div class="text-xl" aria-hidden="true">📸</div><div class="mt-2 text-sm font-black text-sky-900">Moments worth sharing</div><p class="mt-1 text-xs leading-relaxed text-stone-500">See the community’s bun moments and share one of your own.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- TASTE & SEE MOMENTS -->
+<section id="community" class="reveal mx-auto max-w-6xl px-3 py-9 scroll-mt-20 sm:px-4">
+  <div class="overflow-hidden rounded-[2rem] border border-sky-100 bg-gradient-to-br from-[#edf8fc] via-white to-[#fff3e4] p-4 sm:p-7">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Fresh from your corner of Cebu</div><h2 class="mt-1 text-2xl font-black sm:text-3xl">Taste &amp; See Moments</h2></div>
+      <p class="text-sm text-stone-500">Share the little moments that make a warm bun even better.</p>
+    </div>
+    <form id="momentForm" onsubmit="publishMoment(event)" class="mt-5 grid gap-3 rounded-2xl border border-white bg-white/80 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <label class="text-xs font-bold text-stone-600">YOUR PHOTO<input id="momentPhoto" type="file" accept="image/jpeg,image/png,image/webp" required class="mt-1 block w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs font-normal"/></label>
+      <div class="grid gap-2">
+        <label class="text-xs font-bold text-stone-600">CAPTION<input id="momentCaption" maxlength="160" placeholder="A warm bun kind of afternoon…" class="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-normal"/></label>
+        <label class="text-xs font-bold text-stone-600">PLACE (OPTIONAL)<input id="momentLocation" maxlength="80" placeholder="IT lab, Ayala Center Cebu…" class="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-normal"/></label>
+      </div>
+      <button id="momentSubmit" class="soft-button rounded-full bg-sky-600 px-5 py-3 text-sm font-bold text-white">Share a moment</button>
+      <div id="momentNotice" role="status" class="hidden text-xs sm:col-span-3"></div>
+    </form>
+    <div id="momentSignInPrompt" class="mt-3 text-xs text-stone-500">Sign in with Google to share a photo.</div>
+    <div id="momentGrid" class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+  </div>
+</section>
+
+<!-- TRACKING -->
+<section class="reveal max-w-6xl mx-auto px-3 sm:px-4 pb-20">
+  <div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">From our oven to you</div><h2 class="mt-1 text-2xl sm:text-3xl font-black">Follow your order</h2>
+  <p class="mt-2 text-sm text-stone-500">Enter your checkout name to see matching orders.</p>
+  <div class="flex flex-col sm:flex-row gap-2 mt-3">
+    <input id="trackName" placeholder="Name used at checkout" autocomplete="name" class="border border-stone-200 rounded-xl px-3 py-3 text-sm flex-1 w-full" />
+    <input id="trackId" placeholder="Order number (first 8 characters)" autocomplete="off" class="border border-stone-200 rounded-xl px-3 py-3 text-sm flex-1 w-full" />
+    <button onclick="renderTracking()" class="sm:flex-none bg-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold">Find my order</button>
+  </div>
+  <div id="trackList" class="mt-3 space-y-2"></div>
+</section>
+
+<footer class="border-t border-sky-100 bg-white text-center text-xs text-stone-500 py-8 px-4"><span class="relative inline-grid place-items-center h-12 w-12 rounded-full overflow-hidden bg-white ring-2 ring-sky-200 text-2xl align-middle">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><div class="mt-2">Taste &amp; See · Baked fresh, shared with love · All prices in Philippine pesos</div><div class="mt-3 flex flex-wrap justify-center gap-2"><a href="https://www.facebook.com/profile.php?id=61592239637190" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on Facebook" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 320 512" class="h-4 w-4 fill-current"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06H297V6.26S260.43 0 225.36 0C152.77 0 105.27 44 105.27 123.72v71.62H24.61V288h80.66v224h99.2V288z"/></svg><span>Facebook</span></a><a href="https://www.instagram.com/tasteandsee.buns?utm_source=ig_web_button_share_sheet&amp;psln=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on Instagram" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="18" cy="6" r="1" fill="currentColor" stroke="none"/></svg><span>Instagram</span></a><a href="https://www.tiktok.com/@tasteandsee_cinnamonbuns?is_from_webapp=1&amp;sender_device=pc" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on TikTok" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-current"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.54v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 1 1 2.9-2.9c0-.22-.03-.44-.07-.65V11.4c-.9-.27-1.85-.3-2.82-.08a6.43 6.43 0 1 0 6.43 6.43V10.8a8.28 8.28 0 0 0 4.85 1.56V8.82c-.38 0-.75-.04-1.08-.13z"/></svg><span>TikTok</span></a></div></footer>
+
+<!-- AUTHENTICATION -->
+<dialog id="authDlg" class="w-[min(460px,calc(100vw-2rem))] rounded-[1.75rem] border border-sky-100 p-0 shadow-2xl backdrop:bg-slate-900/35">
+  <div class="p-5 sm:p-7">
+    <div class="flex items-start gap-3">
+      <div class="min-w-0 flex-1"><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Welcome to the table</div><h2 class="mt-1 text-2xl font-black">Sign in</h2></div>
+      <button type="button" onclick="$('authDlg').close()" aria-label="Close sign in" class="grid h-10 w-10 place-items-center rounded-full bg-stone-100 text-stone-600">×</button>
+    </div>
+    <section id="customerAuthPanel" class="mt-4">
+      <p class="text-sm text-stone-500">Sign in with Google to place orders, save your details, and share Taste &amp; See Moments.</p>
+      <div id="authError" role="alert" class="mt-3 hidden text-sm text-rose-700"></div>
+      <div id="googleAuthActions" class="mt-4">
+        <button id="googleSignInButton" type="button" onclick="signInWithGoogle()" class="inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-700 shadow-sm transition hover:bg-stone-50">
+          <svg aria-hidden="true" viewBox="0 0 48 48" class="h-5 w-5"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.91c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.39 37.98 46.98 31.8 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59a14.4 14.4 0 0 1 0-9.18l-7.98-6.19a23.9 23.9 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.17 2.3-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+    </section>
+    <div id="signedInActions" class="mt-4 hidden rounded-2xl bg-sky-50 p-4">
+      <div id="signedInIdentity" class="text-sm font-bold text-sky-950"></div>
+      <button type="button" onclick="signOutCurrent()" class="mt-3 w-full rounded-full border border-sky-200 bg-white py-2.5 text-sm font-bold text-sky-800">Sign out</button>
+    </div>
+  </div>
+</dialog>
+
+
+
+<script>
+const $ = id => document.getElementById(id);
+const money = c => "₱" + (c/100).toLocaleString("en-PH", {minimumFractionDigits:2, maximumFractionDigits:2});
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+let CATALOG = [];
+let cart = [], menuFilter="all";
+let currentCustomer = null, momentsLoading = false;
+const STORE_LOCATION = { lat:10.3157, lng:123.8854 };
+const CEBU_BOUNDS = { south:10.25, north:10.39, west:123.78, east:123.96 };
+let checkoutMap = null, checkoutStoreMarker = null, checkoutMarker = null;
+let deliveryDestination = null, deliveryDistanceMeters = null, deliveryFeeCents = 0, quoteRequest = 0;
+let trackingLoading = false, trackingPollTimer = null, trackingMapInstances = {};
+function withinCebu(lat,lng){
+  return lat>=CEBU_BOUNDS.south && lat<=CEBU_BOUNDS.north && lng>=CEBU_BOUNDS.west && lng<=CEBU_BOUNDS.east;
+}
+function setCheckoutMarkerPosition(lat,lng){
+  if(!checkoutMarker){
+    checkoutMarker=L.marker([lat,lng],{draggable:true}).addTo(checkoutMap).bindPopup("Your delivery drop-off");
+    checkoutMarker.on("dragend",event=>setDeliveryLocation(event.target.getLatLng().lat,event.target.getLatLng().lng));
+    return;
+  }
+  checkoutMarker.setLatLng([lat,lng]);
+}
+async function setDeliveryLocation(lat,lng,address=""){
+  if(!withinCebu(lat,lng)){
+    if(deliveryDestination) setCheckoutMarkerPosition(deliveryDestination.lat,deliveryDestination.lng);
+    $("coMapNotice").textContent="Choose a location within Cebu City.";
+    return;
+  }
+  deliveryDestination={lat,lng};
+  deliveryDistanceMeters=null; deliveryFeeCents=0;
+  if(address) $("coAddr").value=address;
+  else if(!$("coAddr").value.trim() || /^Pinned drop-off \(/.test($("coAddr").value.trim())) {
+    $("coAddr").value=`Pinned drop-off (${lat.toFixed(5)}, ${lng.toFixed(5)}), Cebu City`;
+  }
+  setCheckoutMarkerPosition(lat,lng);
+  $("coMapNotice").textContent="Drop-off pin selected. Drag it to adjust the location.";
+  await updateDeliveryQuote();
+}
+function initCheckoutMap(){
+  if(!window.L) throw new Error("The Leaflet map could not be loaded. Check your connection and reload.");
+  if(!checkoutMap){
+    const bounds=L.latLngBounds([CEBU_BOUNDS.south,CEBU_BOUNDS.west],[CEBU_BOUNDS.north,CEBU_BOUNDS.east]);
+    checkoutMap=L.map("coMap",{maxBounds:bounds,maxBoundsViscosity:1}).setView([STORE_LOCATION.lat,STORE_LOCATION.lng],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(checkoutMap);
+    checkoutMap.on("click",event=>setDeliveryLocation(event.latlng.lat,event.latlng.lng));
+    checkoutStoreMarker=L.circleMarker([STORE_LOCATION.lat,STORE_LOCATION.lng],{radius:8,color:"#0369a1",fillColor:"#38bdf8",fillOpacity:1,weight:3})
+      .addTo(checkoutMap).bindPopup("Taste & See bakery · delivery starts here");
+  } else {
+    checkoutMap.setView(deliveryDestination?[deliveryDestination.lat,deliveryDestination.lng]:[STORE_LOCATION.lat,STORE_LOCATION.lng]);
+    setTimeout(()=>checkoutMap.invalidateSize(),100);
+  }
+  if(deliveryDestination) setCheckoutMarkerPosition(deliveryDestination.lat,deliveryDestination.lng);
+  setTimeout(()=>checkoutMap.invalidateSize(),100);
+}
+async function estimateRoadDistanceMeters(destination){
+  const url=`https://router.project-osrm.org/route/v1/driving/${STORE_LOCATION.lng},${STORE_LOCATION.lat};${destination.lng},${destination.lat}?overview=false`;
+  const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),6000);
+  try {
+    const response=await fetch(url,{signal:controller.signal});
+    if(!response.ok) throw new Error(`OSRM returned ${response.status}.`);
+    const result=await response.json(), meters=result.routes?.[0]?.distance;
+    if(result.code!=="Ok" || !Number.isFinite(meters) || meters<0) throw new Error("OSRM did not return a driving route.");
+    return {meters:Math.round(meters),approximate:false};
+  } catch {
+    return {meters:Math.max(0,Math.round(distanceBetween(STORE_LOCATION,destination)*1.25)),approximate:true};
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+function distanceBetween(a,b){
+  const radians=value=>value*Math.PI/180, dLat=radians(b.lat-a.lat), dLng=radians(b.lng-a.lng);
+  const h=Math.sin(dLat/2)**2+Math.cos(radians(a.lat))*Math.cos(radians(b.lat))*Math.sin(dLng/2)**2;
+  return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+async function updateDeliveryQuote(){
+  const request=++quoteRequest;
+  if(!deliveryDestination || $("coAddr").value.trim().length<5){
+    deliveryDistanceMeters=null; deliveryFeeCents=0;
+    $("coDistance").textContent="Enter the address and drop a pin to see the delivery fee.";
+    renderCart(); return;
+  }
+  $("coDistance").textContent="Calculating delivery distance…";
+  const quote=await estimateRoadDistanceMeters(deliveryDestination);
+  if(request!==quoteRequest) return;
+  deliveryDistanceMeters=quote.meters;
+  deliveryFeeCents=Math.round(4000+deliveryDistanceMeters*1.2);
+  const km=(deliveryDistanceMeters/1000).toFixed(1);
+  $("coDistance").textContent=`${km} km · ${quote.approximate?"approx. Haversine road estimate":"OSRM road distance"} · delivery ${money(deliveryFeeCents)}`;
+  renderCart();
+}
+async function pinCurrentLocation(){
+  if(!navigator.geolocation){ $("coMapNotice").textContent="Location services are not available in this browser."; return; }
+  $("coMapNotice").textContent="Finding your location…";
+  navigator.geolocation.getCurrentPosition(
+    position=>setDeliveryLocation(position.coords.latitude,position.coords.longitude),
+    error=>{ $("coMapNotice").textContent=`Could not get your location: ${error.message}`; },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:30000});
+}
+function initTrackingMap(order){
+  const id=String(order.id), node=$(`track-map-${id}`);
+  if(!node || !withinCebu(Number(order.delivery_lat),Number(order.delivery_lng))) return;
+  const destination={lat:Number(order.delivery_lat),lng:Number(order.delivery_lng)};
+  const rider=order.driver_lat!==null&&order.driver_lat!==undefined&&order.driver_lng!==null&&order.driver_lng!==undefined
+    ?{lat:Number(order.driver_lat),lng:Number(order.driver_lng)}:null;
+  let state=trackingMapInstances[id];
+  if(!state || state.node!==node){
+    state={node,hasRiderPosition:false};
+    state.map=L.map(node).setView([destination.lat,destination.lng],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(state.map);
+    state.storeMarker=L.marker([STORE_LOCATION.lat,STORE_LOCATION.lng]).addTo(state.map).bindPopup("Taste & See bakery");
+    state.destinationMarker=L.marker([destination.lat,destination.lng]).addTo(state.map).bindPopup("Your drop-off");
+    state.riderMarker=L.marker([destination.lat,destination.lng]).bindPopup("Rider location").addTo(state.map);
+    state.riderMarker.setOpacity(0);
+    state.route=L.polyline([[STORE_LOCATION.lat,STORE_LOCATION.lng],[destination.lat,destination.lng]],{color:"#0284c7",weight:4}).addTo(state.map);
+    state.map.fitBounds(state.route.getBounds(),{padding:[24,24]});
+    trackingMapInstances[id]=state;
+    setTimeout(()=>state.map.invalidateSize(),100);
+  }
+  if(rider){
+    state.riderMarker.setLatLng([rider.lat,rider.lng]);
+    state.riderMarker.setOpacity(1);
+    if(!state.hasRiderPosition){
+      state.map.fitBounds(L.latLngBounds(
+        [[STORE_LOCATION.lat,STORE_LOCATION.lng],[destination.lat,destination.lng],[rider.lat,rider.lng]]),{padding:[24,24]});
+      state.hasRiderPosition=true;
+    }
+  }
+}
+
+async function init(){
+  renderCart(); observeReveals();
+  try {
+  const categories={classic:["swirl","The original"],tiramisu:["coffee","A little indulgence"],biscoff:["crunchy","Sweet & spiced"],oreo:["chocolate","Chocolate lover"]};
+  CATALOG=(await TasteSeeDB.products()).map(product=>{
+    const [category,tag]=categories[product.name.toLowerCase()]||["signature","Fresh from our oven"];
+    return {id:product.id,name:product.name,price:product.price_cents/100,emoji:product.emoji||"🥮",
+      desc:product.description||"",tag,category};
+  });
+  renderMenu();
+  await refreshCustomerSession();
+  if(!currentCustomer){
+    const staff=await TasteSeeDB.currentStaff(["admin","baker","driver"]);
+    if(staff){
+      location.replace({admin:"./admin.html",baker:"./baker.html",driver:"./driver.html"}[staff.role]);
+      return;
+    }
+  }
+  await renderMoments();
+  } catch(error) {
+  $("menuGrid").innerHTML=`<div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 sm:col-span-2 lg:col-span-4">The live storefront is unavailable: ${escapeHTML(error.message)}</div>`;
+  $("momentGrid").innerHTML=`<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800 sm:col-span-2 lg:col-span-3">Community features could not connect: ${escapeHTML(error.message)}</div>`;
+  }
+}
+function openAuth(){
+  $("authError").classList.add("hidden");
+  $("signedInActions").classList.toggle("hidden",!currentCustomer);
+  $("customerAuthPanel").classList.toggle("hidden",Boolean(currentCustomer));
+  $("googleAuthActions").classList.toggle("hidden",Boolean(currentCustomer));
+  if(currentCustomer) $("signedInIdentity").textContent=`Signed in as ${currentCustomer.name||currentCustomer.email}`;
+  if(!$("authDlg").open) $("authDlg").showModal();
+}
+function showAuthError(id,error){
+  const node=$(id); node.textContent=error instanceof Error?error.message:String(error);
+  node.classList.remove("hidden");
+}
+async function refreshCustomerSession(){
+  currentCustomer=await TasteSeeDB.currentCustomer();
+  $("authButton").textContent=currentCustomer?"Account":"Sign in";
+  $("momentForm").classList.toggle("hidden",!currentCustomer);
+  $("momentSignInPrompt").classList.toggle("hidden",Boolean(currentCustomer));
+  if(currentCustomer){
+    if(currentCustomer.name) $("coName").value=currentCustomer.name;
+    if(!$("coPhone").value.trim()) $("coPhone").value=currentCustomer.phone||"";
+  }
+  updateReceiptCustomer();
+}
+function updateReceiptCustomer(){
+  $("receiptCustomer").textContent=$("coName").value.trim()||currentCustomer?.name||"Guest";
+}
+async function signInWithGoogle(){
+  $("authError").classList.add("hidden");
+  $("googleSignInButton").disabled=true;
+  try{
+    await TasteSeeDB.signInWithGoogle(`${window.location.origin}${window.location.pathname}`);
+  }catch(error){
+    showAuthError("authError",error);
+    $("googleSignInButton").disabled=false;
+  }
+}
+async function signOutCurrent(){
+  try{
+    await TasteSeeDB.signOutCustomer(); currentCustomer=null;
+    clearInterval(trackingPollTimer); trackingPollTimer=null; trackingRenderSignature=null; trackingMapInstances={};
+    await refreshCustomerSession(); $("authDlg").close();
+  }catch(error){showAuthError("authError",error);}
+}
+async function prepareCommunityPhoto(file){
+  if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Choose a JPEG, PNG, or WebP photo.");
+  if(file.size>8*1024*1024) throw new Error("Choose a photo smaller than 8 MB.");
+  if(typeof createImageBitmap!=="function") throw new Error("This browser cannot resize photos for safe sharing.");
+  const bitmap=await createImageBitmap(file);
+  const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const context=canvas.getContext("2d");
+  if(!context){bitmap.close();throw new Error("Photo processing is unavailable in this browser.");}
+  context.drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close();
+  const maxBytes=1800*1024;
+  let blob=null;
+  for(const quality of [.82,.7,.58,.46]){
+    blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",quality));
+    if(blob&&blob.size<=maxBytes) break;
+  }
+  if(!blob||blob.size>maxBytes) throw new Error("That photo is too large after compression. Choose a smaller image.");
+  return new File([blob],"taste-see-moment.jpg",{type:"image/jpeg"});
+}
+async function renderMoments(){
+  if(momentsLoading)return;
+  momentsLoading=true;
+  try{
+    const moments=await TasteSeeDB.moments();
+    $("momentGrid").innerHTML=moments.length?moments.map(moment=>{
+      const imageUrl=String(moment.image_url||"");
+      if(!/^https:\/\//i.test(imageUrl)&&!/^data:image\/(?:jpeg|png|webp);base64,/i.test(imageUrl))return "";
+      return `<article class="overflow-hidden rounded-2xl border border-white bg-white shadow-[0_10px_25px_rgba(108,88,60,.08)]">
+        <img src="${escapeHTML(imageUrl)}" alt="${escapeHTML(moment.caption||"Taste & See community moment")}" loading="lazy" class="aspect-[4/3] w-full object-cover"/>
+        <div class="p-4"><p class="text-sm font-semibold text-stone-700">${escapeHTML(moment.caption||"A cozy bun moment.")}</p>
+        ${moment.location_tag?`<div class="mt-2 text-xs font-semibold text-sky-700">⌖ ${escapeHTML(moment.location_tag)}</div>`:""}
+        <div class="mt-2 text-[10px] text-stone-400">${new Date(moment.created_at).toLocaleDateString()}</div></div>
+      </article>`;
+    }).join(""):`<div class="rounded-2xl border border-dashed border-sky-200 bg-white/70 p-6 text-center text-sm text-stone-500 sm:col-span-2 lg:col-span-3">No moments shared yet. Be the first to add a little warmth.</div>`;
+    if(!$("momentGrid").innerHTML.trim()) $("momentGrid").innerHTML=`<div class="rounded-2xl bg-white p-4 text-sm text-stone-500 sm:col-span-2 lg:col-span-3">No photos available to display.</div>`;
+  }catch(error){
+    $("momentGrid").innerHTML=`<div class="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700 sm:col-span-2 lg:col-span-3">Community photos could not be loaded: ${escapeHTML(error.message)}</div>`;
+  }finally{momentsLoading=false;}
+}
+async function publishMoment(event){
+  event.preventDefault();
+  const file=$("momentPhoto").files?.[0];
+  if(!currentCustomer){openAuth();return;}
+  $("momentNotice").classList.remove("hidden"); $("momentNotice").className="text-xs text-stone-500 sm:col-span-3";
+  $("momentNotice").textContent="Preparing your photo…"; $("momentSubmit").disabled=true;
+  try{
+    const imageFile=await prepareCommunityPhoto(file);
+    await TasteSeeDB.publishMoment({imageFile,caption:$("momentCaption").value.trim(),locationTag:$("momentLocation").value.trim()});
+    $("momentForm").reset();
+    $("momentNotice").textContent="Your moment is shared. Thanks for adding a little warmth!";
+    $("momentNotice").className="text-xs font-semibold text-emerald-700 sm:col-span-3";
+    await renderMoments();
+  }catch(error){
+    $("momentNotice").textContent=error.message;
+    $("momentNotice").className="text-xs font-semibold text-rose-700 sm:col-span-3";
+  }finally{$("momentSubmit").disabled=false;}
+}
+function observeReveals(){
+  const elements = document.querySelectorAll(".reveal:not([data-observed])");
+  if(!("IntersectionObserver" in window)){ elements.forEach(el=>el.classList.add("is-visible")); return; }
+  const observer = new IntersectionObserver(entries=>entries.forEach(entry=>{
+    if(entry.isIntersecting){ entry.target.classList.add("is-visible"); observer.unobserve(entry.target); }
+  }), { threshold:.14, rootMargin:"0px 0px -36px 0px" });
+  elements.forEach(el=>{
+    el.dataset.observed="true";
+    const rect=el.getBoundingClientRect();
+    if(rect.top<window.innerHeight-24 && rect.bottom>0) el.classList.add("is-visible");
+    else observer.observe(el);
+  });
+}
+let scrollFrame = 0;
+window.addEventListener("scroll", ()=>{
+  if(scrollFrame) return;
+  scrollFrame = requestAnimationFrame(()=>{
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    $("scrollProgress").style.transform = `scaleX(${max > 0 ? window.scrollY/max : 0})`;
+    scrollFrame = 0;
+  });
+}, {passive:true});
+function renderMenu(){
+  const products=menuFilter==="all"?CATALOG:CATALOG.filter(p=>p.category===menuFilter);
+  $("menuGrid").innerHTML = products.map(p=>`
+    <article class="bun-card reveal bg-white rounded-[1.5rem] border border-stone-200/80 p-4 sm:p-5 flex flex-col min-w-0 shadow-sm" style="transition-delay:${CATALOG.indexOf(p)*70}ms">
+      <div class="relative grid aspect-[1.16] place-items-center overflow-hidden rounded-[1.15rem] bg-gradient-to-br from-sky-100 via-white to-blue-100"><div class="absolute h-28 w-28 rounded-full bg-white/70 blur-xl"></div><div class="relative text-7xl drop-shadow-sm">${p.emoji}</div><span class="absolute left-3 top-3 rounded-full border border-white/80 bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-800">${p.tag}</span></div>
+      <div class="mt-4 font-black text-lg leading-snug">${p.name}</div>
+      <div class="mt-1 text-sm leading-relaxed text-stone-500 flex-1">${p.desc}</div>
+      <div class="mt-4 flex items-center gap-2"><b class="whitespace-nowrap text-lg">${money(p.price*100)}</b>
+      <button onclick="addQuickToCart('${p.id}',event)" class="soft-button ml-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-950 hover:bg-amber-200" aria-label="Add ${p.name} to bun box"><span aria-hidden="true">+</span><span>Add to box</span></button></div>
+    </article>`).join("");
+  observeReveals();
+}
+function filterMenu(category,button){
+  menuFilter=category;
+  document.querySelectorAll("#categoryPills .category-pill").forEach(pill=>pill.setAttribute("aria-pressed",String(pill===button)));
+  renderMenu();
+}
+function cartUnits(){ return cart.reduce((sum,item)=>sum+item.qty,0); }
+function animateBunDrop(emoji,event,slotIndex){
+  const slot=$("boxSlots").children[slotIndex], source=event?.currentTarget;
+  if(!slot||!source||!Element.prototype.animate) return;
+  const from=source.getBoundingClientRect(),to=slot.getBoundingClientRect(),bun=document.createElement("span");
+  bun.textContent=emoji; bun.setAttribute("aria-hidden","true");
+  Object.assign(bun.style,{position:"fixed",left:`${from.left+from.width/2-18}px`,top:`${from.top+from.height/2-18}px`,zIndex:"60",fontSize:"36px",pointerEvents:"none"});
+  document.body.append(bun);
+  bun.animate([{transform:"translate(0,0) scale(1)",opacity:1},{transform:`translate(${to.left+to.width/2-from.left-from.width/2}px,${to.top+to.height/2-from.top-from.height/2}px) scale(.55)`,opacity:.4}],{duration:500,easing:"cubic-bezier(.2,.8,.2,1)"}).finished.finally(()=>bun.remove());
+}
+function addQuickToCart(pid,event){
+  const p=CATALOG.find(item=>item.id===pid);
+  if(cartUnits()>=4){ $("boxCount").textContent="Box is full — remove a bun to add another."; return; }
+  const slotIndex=cartUnits();
+  const existing=cart.find(item=>item.pid===p.id);
+  if(existing) existing.qty++;
+  else cart.push({pid:p.id,name:p.name,emoji:p.emoji,qty:1,unit_cents:Math.round(p.price*100)});
+  renderCart(); animateBunDrop(p.emoji,event,slotIndex);
+}
+function toggleCart(open){
+  $("receiptPanel").classList.toggle("is-open",open);
+  $("receiptPanel").setAttribute("aria-hidden",String(!open));
+  $("reviewButton").innerHTML=open?'Hide receipt <span aria-hidden="true">↑</span>':'Review order <span aria-hidden="true">↓</span>';
+}
+function totals(){
+  const sub = cart.reduce((a,i)=>a+i.unit_cents*i.qty,0);
+  const disc = cartUnits()===4 ? 1000 : 0;
+  const kind = document.querySelector('input[name="kind"]:checked')?.value || "pickup";
+  const del = cart.length && kind==="delivery" ? deliveryFeeCents : 0;
+  return { sub, disc, del, tot: sub-disc+del };
+}
+function renderCart(){
+  $("cartCount").textContent = cartUnits();
+  $("boxCount").textContent = `${cartUnits()} of 4 buns`;
+  const slotItems=cart.flatMap((item,index)=>Array.from({length:item.qty},()=>({item,index})));
+  $("boxSlots").innerHTML=Array.from({length:4},(_,slotIndex)=>{
+    const entry=slotItems[slotIndex];
+    if(!entry)return `<div class="bun-slot"><span class="text-xs font-semibold">Slot ${slotIndex+1}</span></div>`;
+    const {item,index}=entry;
+    return `<div class="bun-slot is-filled"><span class="text-3xl" aria-hidden="true">${item.emoji}</span><span class="max-w-full truncate px-1 text-[11px] font-bold">${escapeHTML(item.name)}</span><button type="button" onclick="removeCartUnit(${index})" aria-label="Remove ${escapeHTML(item.name)}" class="absolute -right-1 -top-1 grid h-7 w-7 place-items-center rounded-full bg-white text-sm text-stone-500 shadow">×</button></div>`;
+  }).join("");
+  const t = totals();
+  $("boxDiscountRow").classList.toggle("hidden",t.disc===0);
+  $("cartItems").innerHTML = cart.length ? cart.map((i,x)=>`
+    <div class="flex items-center gap-3 border-b border-dashed border-stone-300 py-2 text-sm"><div class="text-2xl">${i.emoji}</div>
+    <div class="min-w-0 flex-1"><b>${escapeHTML(i.name)} × ${i.qty}</b><div class="text-xs text-stone-500">${money(i.unit_cents)} each</div></div>
+    <div class="text-right"><b>${money(i.unit_cents*i.qty)}</b><br/><button onclick="removeCartUnit(${x})" class="min-h-8 text-xs font-semibold text-rose-600 underline">remove one</button></div></div>`).join("")
+    : `<div class="py-5 text-center text-sm text-stone-400">Your bun box is waiting for something lovely.</div>`;
+  $("tSub").textContent=money(t.sub); $("tDisc").textContent="−"+money(t.disc); $("tDel").textContent=money(t.del); $("tTot").textContent=money(t.tot);
+  $("coFee").textContent=money(t.del); $("coTotal").textContent=money(t.tot);
+}
+function removeCartUnit(index){ if(cart[index]){cart[index].qty--;if(cart[index].qty<=0)cart.splice(index,1);renderCart();} }
+function reviewOrder(){
+  if($("receiptPanel").classList.contains("is-open")){toggleCart(false);return;}
+  openCheckout();
+}
+function openCheckout(){
+  if(!cart.length){ $("orderBox").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  renderCart(); toggleCart(true); coKind();
+  $("receiptPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function coKind(){
+  const delivery=document.querySelector('input[name="kind"]:checked').value==="delivery";
+  $("coDeliveryFields").classList.toggle("hidden",!delivery);
+  if(delivery){
+    try { initCheckoutMap(); }
+    catch(error){ $("coMapNotice").textContent=error.message; }
+    setTimeout(()=>checkoutMap?.invalidateSize(),550);
+  }
+  renderCart();
+}
+async function placeOrder(){
+  $("coErr").classList.add("hidden");
+  if(!currentCustomer){
+    $("coErr").textContent="Sign in with Google before placing an order.";
+    $("coErr").classList.remove("hidden");
+    openAuth();
+    return;
+  }
+  const name = $("coName").value.trim();
+  if(name.length<2){ $("coErr").textContent="Please enter your name."; $("coErr").classList.remove("hidden"); return; }
+  const kind = document.querySelector('input[name="kind"]:checked').value;
+  if(kind==="delivery" && ($("coAddr").value.trim().length<5 || !deliveryDestination || deliveryDistanceMeters===null)){
+    $("coErr").textContent="Enter your Cebu City address or landmark, choose a map pin, and wait for the delivery quote.";
+    $("coErr").classList.remove("hidden"); return;
+  }
+  $("payBtn").disabled=true; $("payBtn").textContent="Placing order…";
+  const t = totals();
+  try {
+    const order = await TasteSeeDB.createOrder({
+      customer_name:name, phone:$("coPhone").value.trim(), kind, address:kind==="delivery"?$("coAddr").value.trim():"",
+      delivery_lat:kind==="delivery"?deliveryDestination.lat:null, delivery_lng:kind==="delivery"?deliveryDestination.lng:null,
+      delivery_distance_meters:kind==="delivery"?deliveryDistanceMeters:0, delivery_fee_cents:kind==="delivery"?deliveryFeeCents:0,
+      subtotal_cents:t.sub, discount_cents:t.disc, total_cents:t.tot, pool_id:null,
+      estimated_ready_at:new Date(Date.now()+25*60000).toISOString(),
+      items: cart.map(i=>({ name:i.name, qty:i.qty, unit_price_cents:i.unit_cents, custom:{} })),
+    });
+    cart=[]; renderCart();
+    toggleCart(false);
+    $("trackName").value = name;
+    $("trackId").value = String(order.id).slice(0,8);
+    alert(`Order received! #${String(order.id).slice(0,8)} — estimated ready in ~25 min. No online payment was collected.`);
+    renderTracking();
+  } catch(e){ $("coErr").textContent="Failed: "+e.message; $("coErr").classList.remove("hidden"); }
+  $("payBtn").disabled=false; $("payBtn").textContent="Place my order";
+}
+const STATUS = { pending:"🕓 pending", baking:"🔥 baking", ready:"🔔 ready", out_for_delivery:"🛵 on the way", completed:"✅ completed", cancelled:"❌ cancelled" };
+let trackingRenderSignature = null;
+async function renderTracking(){
+  if(trackingLoading) return;
+  if(!currentCustomer){
+    $("trackList").innerHTML=`<div class="rounded-xl border border-sky-200 bg-white p-3 text-sm text-stone-600">Sign in with the Google account used to place the order, then enter its name and order number.</div>`;
+    openAuth();
+    return;
+  }
+  trackingLoading=true;
+  const q = $("trackName").value.trim();
+  const id = $("trackId").value.trim();
+  if(q.length<2 || id.length<8){
+    clearInterval(trackingPollTimer); trackingPollTimer=null; trackingRenderSignature=null;
+    $("trackList").innerHTML = `<div class="rounded-xl border border-sky-200 bg-white p-3 text-sm text-stone-600">Enter your checkout name and the first 8 characters of your order number.</div>`;
+    trackingLoading=false;
+    return;
+  }
+  try {
+    const orders=(await TasteSeeDB.trackOrders(q,id)).slice(0,20);
+    const active=orders.filter(order=>order.status==="out_for_delivery"&&order.kind==="delivery");
+    const signature=orders.map(order=>`${order.id}:${order.status}`).join("|");
+    if(signature!==trackingRenderSignature){
+      $("trackList").innerHTML=orders.map(o=>`
+        <div class="bg-white border border-sky-100 rounded-xl p-3 text-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div class="font-mono text-xs text-stone-400 shrink-0">#${escapeHTML(String(o.id).slice(0,8))}</div>
+            <div class="flex-1 min-w-0"><b class="break-words">${escapeHTML(o.customer_name)}</b> · ${escapeHTML(o.kind)} · <b>${money(o.total_cents)}</b>
+            <div class="text-xs text-stone-500 break-words">${new Date(o.created_at).toLocaleString()} · ${(o.items||[]).map(i=>i.qty+"× "+escapeHTML(i.product_name||i.name)).join(", ")}</div></div>
+            <span class="text-xs bg-sky-100 text-sky-800 px-2 py-1 rounded font-bold self-start sm:self-auto whitespace-nowrap">${STATUS[o.status]||o.status}</span>
+          </div>
+          ${o.status==="out_for_delivery"&&o.kind==="delivery"?`
+            ${o.delivery_lat!=null&&o.delivery_lng!=null?`<div id="track-map-${escapeHTML(String(o.id))}" class="mt-3 h-64 w-full overflow-hidden rounded-xl border border-sky-100 bg-sky-50" aria-label="Live rider delivery map"></div><div class="track-map-note mt-1 text-xs text-stone-500">${o.driver_lat!=null?"Rider location updates automatically.":"Waiting for the rider’s first location update."}</div>`:`<div class="mt-3 rounded-lg bg-sky-50 p-3 text-xs text-sky-900">Delivery map is unavailable because this order has no saved drop-off coordinates.</div>`}
+          `:""}
+        </div>`).join("")||`<div class="text-sm text-stone-400">No orders found.</div>`;
+      trackingRenderSignature=signature;
+    }
+    if(active.length){
+      try {
+        active.forEach(order=>{
+          initTrackingMap(order);
+          const map=$(`track-map-${order.id}`);
+          const note=map?.nextElementSibling;
+          if(note) note.textContent=order.driver_lat!=null&&order.driver_lng!=null
+            ?"Rider location updates automatically.":"Waiting for the rider’s first location update.";
+        });
+        if(!trackingPollTimer) trackingPollTimer=setInterval(renderTracking,10000);
+      } catch(error){
+        $("trackList").querySelectorAll(".track-map-note").forEach(note=>{note.textContent=error.message;note.classList.add("text-rose-700");});
+      }
+    } else {
+      clearInterval(trackingPollTimer); trackingPollTimer=null;
+      trackingMapInstances={};
+    }
+  } catch(error){
+    $("trackList").innerHTML=`<div class="text-sm text-rose-700">Could not look up that order: ${escapeHTML(error.message)}</div>`;
+  } finally {
+    trackingLoading=false;
+  }
+}
+init().catch(e=>{
+  console.error("Storefront initialization failed",e);
+  $("menuGrid").innerHTML = `<div class="rounded-xl border border-rose-200 bg-white p-4 text-sm text-rose-700">The storefront could not finish loading: ${escapeHTML(e.message)}</div>`;
+});
+</script>
+</body>
+</html>

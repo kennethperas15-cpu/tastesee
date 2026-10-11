@@ -1,31 +1,31 @@
--- Taste & See: currently available flavours and today's bake pools.
+-- Taste & See: currently available flavours. Safe to rerun.
 -- Safe to rerun; legacy flavours are retained but deactivated.
 
 update products
 set name = 'Classic',
     description = 'Soft, buttery dough with our signature cinnamon swirl.',
-    price_cents = 9500, emoji = '🌀', category = 'classic',
+    price_cents = 6500, emoji = '🌀', category = 'classic',
     stock_daily = 80, is_active = true
 where lower(name) in ('classic cinnamon swirl', 'classic');
 
 update products
 set name = 'Tiramisu',
     description = 'Espresso-kissed cream and a cocoa finish.',
-    price_cents = 14500, emoji = '☕', category = 'signature',
+    price_cents = 6500, emoji = '☕', category = 'signature',
     stock_daily = 40, is_active = true
 where lower(name) = 'tiramisu';
 
 update products
 set name = 'Biscoff',
     description = 'Caramelized biscuit spread with a golden crunch.',
-    price_cents = 13500, emoji = '🍪', category = 'signature',
+    price_cents = 6500, emoji = '🍪', category = 'signature',
     stock_daily = 40, is_active = true
 where lower(name) = 'biscoff';
 
 update products
 set name = 'Oreo',
     description = 'Cookies-and-cream filling with a chocolate crumble.',
-    price_cents = 12500, emoji = '🍫', category = 'signature',
+    price_cents = 6500, emoji = '🍫', category = 'signature',
     stock_daily = 40, is_active = true
 where lower(name) = 'oreo';
 
@@ -36,10 +36,10 @@ where name not in ('Classic', 'Tiramisu', 'Biscoff', 'Oreo');
 insert into products (name, description, price_cents, emoji, category, stock_daily)
 select v.name, v.description, v.price_cents, v.emoji, 'signature', v.stock_daily
 from (values
-  ('Classic', 'Soft, buttery dough with our signature cinnamon swirl.', 9500, '🌀', 80),
-  ('Tiramisu', 'Espresso-kissed cream and a cocoa finish.', 14500, '☕', 40),
-  ('Biscoff', 'Caramelized biscuit spread with a golden crunch.', 13500, '🍪', 40),
-  ('Oreo', 'Cookies-and-cream filling with a chocolate crumble.', 12500, '🍫', 40)
+  ('Classic', 'Soft, buttery dough with our signature cinnamon swirl.', 6500, '🌀', 80),
+  ('Tiramisu', 'Espresso-kissed cream and a cocoa finish.', 6500, '☕', 40),
+  ('Biscoff', 'Caramelized biscuit spread with a golden crunch.', 6500, '🍪', 40),
+  ('Oreo', 'Cookies-and-cream filling with a chocolate crumble.', 6500, '🍫', 40)
 ) as v(name, description, price_cents, emoji, stock_daily)
 where not exists (select 1 from products p where p.name = v.name);
 

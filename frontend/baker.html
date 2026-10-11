@@ -8,15 +8,7 @@
 <link rel="apple-touch-icon" href="./assets/logo.png" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  window.TASTESEE_SUPABASE_URL = "https://ubjpsjndtzlpugvxduhr.supabase.co";
-  window.TASTESEE_SUPABASE_ANON_KEY = "";
-  try {
-    const url=localStorage.getItem("ts_sb_url"), key=localStorage.getItem("ts_sb_key");
-    if(url&&key&&window.supabase) window.supabaseClient=window.supabase.createClient(url,key);
-    else if(window.TASTESEE_SUPABASE_URL&&window.TASTESEE_SUPABASE_ANON_KEY&&window.supabase) window.supabaseClient=window.supabase.createClient(window.TASTESEE_SUPABASE_URL,window.TASTESEE_SUPABASE_ANON_KEY);
-  } catch {}
-</script>
+<script src="./js/supabase-config.js"></script>
 <script src="./js/db.js"></script>
 </head>
 <body class="min-h-screen bg-[#f5fbff] text-stone-800">
@@ -33,13 +25,9 @@
     <div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Kitchen only</div>
     <h1 class="mt-2 text-2xl font-black">Baker sign in</h1>
     <p class="mt-2 text-sm text-stone-500">Sign in with your assigned baker account to see today’s production queue.</p>
-    <div id="authConfig" class="mt-4 hidden rounded-xl bg-sky-50 p-3 text-sm text-sky-900">Staff sign-in needs a Supabase URL and anon key. Configure the connection from the storefront settings.</div>
-    <form onsubmit="staffSignIn(event)" class="mt-5 space-y-3">
-      <label class="block text-sm font-semibold">Email<input id="staffEmail" type="email" autocomplete="username" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal"/></label>
-      <label class="block text-sm font-semibold">Password<input id="staffPassword" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border px-3 py-3 font-normal"/></label>
-      <div id="authError" role="alert" class="hidden text-sm text-rose-700"></div>
-      <button id="authSubmit" class="w-full rounded-xl bg-sky-600 py-3 font-bold text-white">Enter baker station</button>
-    </form>
+    <div id="authConfig" class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-950">The production Supabase connection is not configured. Contact the site administrator.</div>
+    <div id="authError" role="alert" class="hidden text-sm text-rose-700"></div>
+    <button id="authSubmit" onclick="staffSignIn()" class="mt-5 w-full rounded-xl bg-sky-600 py-3 font-bold text-white">Continue with Google</button>
   </div>
 </section>
 
@@ -91,7 +79,9 @@ async function loadQueue(){
   catch(e){ $("queueError").textContent=`Could not refresh orders: ${e.message}`; $("queueError").classList.remove("hidden"); }
 }
 async function init(){
-  $("authConfig").classList.toggle("hidden",TasteSeeDB.mode()==="supabase");
+  const configured=TasteSeeDB.mode()==="supabase";
+  $("authConfig").classList.toggle("hidden",configured);
+  $("authSubmit").disabled=!configured;
   let staff;
   try { staff=await TasteSeeDB.currentStaff(["admin","baker"]); }
   catch(e){ $("authError").textContent=e.message; $("authError").classList.remove("hidden"); return; }
@@ -101,11 +91,11 @@ async function init(){
   await loadQueue();
   setInterval(loadQueue,30000);
 }
-async function staffSignIn(event){
-  event.preventDefault(); $("authError").classList.add("hidden"); $("authSubmit").disabled=true;
-  try { await TasteSeeDB.signIn($("staffEmail").value.trim(),$("staffPassword").value,["admin","baker"]); await init(); }
+async function staffSignIn(){
+  $("authError").classList.add("hidden"); $("authSubmit").disabled=true;
+  try { await TasteSeeDB.signInWithGoogle(`${location.origin}${location.pathname}`); }
   catch(e){ $("authError").textContent=e.message; $("authError").classList.remove("hidden"); }
-  finally { $("authSubmit").disabled=false; }
+  finally { $("authSubmit").disabled=TasteSeeDB.mode()!=="supabase"; }
 }
 async function advanceOrder(id,status){
   try { await TasteSeeDB.setStatus(id,status); await loadQueue(); }

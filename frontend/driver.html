@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Rider station — Taste &amp; See</title>
+<link rel="icon" type="image/png" href="./assets/logo.png" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/supabase-config.js"></script>
+<script src="./js/db.js"></script>
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; background: #fffaf3; }
+  button { touch-action: manipulation; }
+  .soft-panel { border-color: #eee5d8; box-shadow: 0 12px 30px rgba(108,88,60,.07); }
+  input:focus { outline: 2px solid #bae6fd; outline-offset: 1px; }
+  button { transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; }
+  button:active { transform: scale(.98); }
+</style>
+</head>
+<body class="min-h-screen bg-[#fffaf3] text-stone-800">
+<header class="sticky top-0 z-20 border-b border-sky-100 bg-white/95 backdrop-blur">
+  <div class="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
+    <a href="./index.html" class="text-sm font-semibold text-stone-500">← Store</a>
+    <div class="flex-1 min-w-0"><div class="font-black">🛵 Rider station</div><div id="staffIdentity" class="truncate text-xs text-stone-500">Private delivery workspace</div></div>
+    <button id="refreshButton" onclick="loadOrders()" class="hidden rounded-lg border border-sky-200 px-3 py-2 text-xs font-bold text-sky-800">↻ Refresh</button>
+    <button id="signOutBtn" onclick="staffSignOut()" class="hidden rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800">Sign out</button>
+  </div>
+</header>
+
+<section id="staffGate" class="mx-auto max-w-md px-4 py-12">
+  <div class="soft-panel rounded-3xl border bg-white/90 p-6 sm:p-8">
+    <div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Delivery team</div>
+    <h1 class="mt-2 text-2xl font-black">Rider sign in</h1>
+    <p class="mt-2 text-sm text-stone-500">Sign in with your rider account assigned by the owner.</p>
+    <div id="authConfig" class="mt-4 hidden rounded-2xl bg-amber-50 p-3 text-sm text-amber-950">The production Supabase connection is not configured. Contact the site administrator.</div>
+    <div id="authError" role="alert" class="hidden text-sm text-rose-700"></div>
+    <button id="authSubmit" onclick="staffSignIn()" class="mt-5 w-full rounded-xl bg-sky-600 py-3.5 font-bold text-white">Continue with Google</button>
+  </div>
+</section>
+
+<main id="driverWorkspace" class="mx-auto hidden max-w-4xl px-4 py-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div><div class="text-xs font-bold uppercase tracking-[.2em] text-sky-700">Ready when you are</div><h1 class="mt-1 text-3xl font-black">Delivery queue</h1><p class="mt-2 text-sm text-stone-500">Accept a delivery to start sharing your live location with the customer.</p></div>
+  </div>
+  <div id="driverError" role="alert" class="mt-4 hidden rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"></div>
+  <section class="mt-5">
+    <div class="mb-2 flex items-center justify-between"><h2 class="font-black">Your active deliveries</h2><span id="activeCount" class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-900">0</span></div>
+    <div id="activeOrders" class="grid gap-3"></div>
+  </section>
+  <section class="mt-7">
+    <div class="mb-2 flex items-center justify-between"><h2 class="font-black">Ready for delivery</h2><span id="readyCount" class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900">0</span></div>
+    <div id="readyOrders" class="grid gap-3 md:grid-cols-2"></div>
+  </section>
+  <p class="mt-7 text-center text-xs text-stone-400">Location sharing runs while an order is active. Keep this page open during delivery.</p>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const escapeHTML=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+const money=c=>"₱"+(Number(c||0)/100).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+let staff=null, watchIds=new Map(), locationWriteTimes=new Map(), loadRunning=false;
+
+function itemsText(order){
+  return (order.items||[]).map(item=>`<li class="border-t border-stone-100 py-2"><b>${Number(item.qty)||0}×</b> ${escapeHTML(item.product_name||item.name||"Item")}</li>`).join("");
+}
+function orderCard(order,active){
+  const id=escapeHTML(order.id), routeUrl=order.delivery_lat!=null&&order.delivery_lng!=null
+    ?`https://www.openstreetmap.org/?mlat=${encodeURIComponent(order.delivery_lat)}&mlon=${encodeURIComponent(order.delivery_lng)}#map=16/${encodeURIComponent(order.delivery_lat)}/${encodeURIComponent(order.delivery_lng)}`:"";
+  return `<article class="soft-panel rounded-3xl border bg-white/90 p-4 sm:p-5">
+    <div class="flex items-start gap-3"><div class="min-w-0 flex-1">
+      <div class="font-mono text-xs text-stone-400">#${escapeHTML(String(order.id).slice(0,8))} · ${new Date(order.created_at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</div>
+      <h3 class="mt-1 break-words text-lg font-black">${escapeHTML(order.customer_name)}</h3>
+      <p class="mt-1 break-words text-sm text-stone-600">${escapeHTML(order.address||"Delivery address not provided")}</p>
+      ${order.phone?`<a class="mt-1 inline-block py-1 text-sm font-semibold text-sky-700 underline" href="tel:${escapeHTML(order.phone)}">☎ ${escapeHTML(order.phone)}</a>`:""}
+    </div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-bold ${active?"bg-sky-100 text-sky-900":"bg-emerald-100 text-emerald-900"}">${active?"On the way":"Ready"}</span></div>
+    <ul class="mt-3 text-sm">${itemsText(order)}</ul>
+    <div class="mt-3 flex items-center justify-between border-t border-stone-100 pt-3"><span class="text-sm font-bold">Order total</span><b>${money(order.total_cents)}</b></div>
+    <div class="mt-3 grid grid-cols-1 gap-2 ${active?"sm:grid-cols-2":""}">
+      ${routeUrl?`<a href="${routeUrl}" target="_blank" rel="noopener" class="rounded-xl border border-sky-200 py-3 text-center text-sm font-bold text-sky-800">Open drop-off in OpenStreetMap ↗</a>`:""}
+      ${active?`<button onclick="markDelivered('${id}')" class="rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white">Mark delivered ✓</button>`:`<button onclick="acceptDelivery('${id}')" class="rounded-xl bg-sky-600 py-3 text-sm font-bold text-white">Accept &amp; Dispatch →</button>`}
+    </div>
+  </article>`;
+}
+function showDriverError(message){ $("driverError").textContent=message; $("driverError").classList.remove("hidden"); }
+function hideDriverError(){ $("driverError").classList.add("hidden"); }
+function startLocationWatch(orderId){
+  if(watchIds.has(orderId)) return;
+  if(!navigator.geolocation){ showDriverError("This browser does not provide location services. Delivery tracking cannot start."); return; }
+  try {
+    const watchId=navigator.geolocation.watchPosition(async position=>{
+      const now=Date.now();
+      if(now-(locationWriteTimes.get(orderId)||0)<5000) return;
+      locationWriteTimes.set(orderId,now);
+      try { await TasteSeeDB.updateDriverLocation(orderId,position.coords.latitude,position.coords.longitude); }
+      catch(error){ showDriverError(`Live location could not be sent: ${error.message}`); }
+    },error=>showDriverError(`Live location is unavailable: ${error.message}`),{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+    watchIds.set(orderId,watchId);
+  } catch(error){ showDriverError(`Could not start location tracking: ${error.message}`); }
+}
+function stopLocationWatch(orderId){
+  if(watchIds.has(orderId)){ navigator.geolocation.clearWatch(watchIds.get(orderId)); watchIds.delete(orderId); }
+  locationWriteTimes.delete(orderId);
+}
+function renderOrders(orders){
+  const active=orders.filter(order=>order.status==="out_for_delivery"&&order.driver_id===staff.id);
+  const ready=orders.filter(order=>order.status==="ready");
+  $("activeCount").textContent=active.length;
+  $("readyCount").textContent=ready.length;
+  $("activeOrders").innerHTML=active.map(order=>orderCard(order,true)).join("")||
+    `<div class="rounded-2xl border border-dashed border-sky-200 bg-white p-6 text-center text-sm text-stone-500">No deliveries in progress.</div>`;
+  $("readyOrders").innerHTML=ready.map(order=>orderCard(order,false)).join("")||
+    `<div class="rounded-2xl border border-dashed border-stone-200 bg-white p-6 text-center text-sm text-stone-500 md:col-span-2">No orders are ready for delivery.</div>`;
+  const activeIds=new Set(active.map(order=>order.id));
+  for(const id of watchIds.keys()) if(!activeIds.has(id)) stopLocationWatch(id);
+  active.forEach(order=>startLocationWatch(order.id));
+}
+async function loadOrders(){
+  if(loadRunning) return;
+  loadRunning=true; hideDriverError();
+  try { renderOrders(await TasteSeeDB.getDriverOrders()); }
+  catch(error){ showDriverError(`Could not load the delivery queue: ${error.message}`); }
+  finally { loadRunning=false; }
+}
+async function acceptDelivery(id){
+  hideDriverError();
+  try { await TasteSeeDB.assignDriver(id,staff.id); await loadOrders(); }
+  catch(error){ showDriverError(`Could not accept this delivery: ${error.message}`); }
+}
+async function markDelivered(id){
+  hideDriverError();
+  try { await TasteSeeDB.setStatus(id,"completed"); stopLocationWatch(id); await loadOrders(); }
+  catch(error){ showDriverError(`Could not mark this delivery complete: ${error.message}`); }
+}
+async function init(){
+  const configured=TasteSeeDB.mode()==="supabase";
+  $("authConfig").classList.toggle("hidden",configured);
+  $("authSubmit").disabled=!configured;
+  try { staff=await TasteSeeDB.currentStaff(["driver"]); }
+  catch(error){ $("authError").textContent=error.message; $("authError").classList.remove("hidden"); return; }
+  if(!staff) return;
+  $("staffGate").classList.add("hidden"); $("driverWorkspace").classList.remove("hidden");
+  $("refreshButton").classList.remove("hidden"); $("signOutBtn").classList.remove("hidden");
+  $("staffIdentity").textContent=`${staff.email} · rider`;
+  await loadOrders();
+  setInterval(loadOrders,15000);
+}
+async function staffSignIn(){
+  $("authError").classList.add("hidden"); $("authSubmit").disabled=true;
+  try { await TasteSeeDB.signInWithGoogle(`${location.origin}${location.pathname}`); }
+  catch(error){ $("authError").textContent=error.message; $("authError").classList.remove("hidden"); }
+  finally { $("authSubmit").disabled=TasteSeeDB.mode()!=="supabase"; }
+}
+async function staffSignOut(){
+  for(const id of watchIds.keys()) stopLocationWatch(id);
+  await TasteSeeDB.signOut(); location.reload();
+}
+init();
+</script>
+</body>
+</html>

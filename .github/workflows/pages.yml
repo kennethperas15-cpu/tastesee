@@ -1,0 +1,80 @@
+name: Deploy Taste & See to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Require and inject Supabase public configuration
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const url = process.env.SUPABASE_URL;
+          const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+          if (!url || !key) {
+            throw new Error("Set the SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY repository variables before deployment.");
+          }
+          let parsedUrl;
+          try {
+            parsedUrl = new URL(url);
+          } catch {
+            throw new Error("SUPABASE_URL must be a valid HTTPS URL.");
+          }
+          if (parsedUrl.protocol !== "https:") {
+            throw new Error("SUPABASE_URL must use HTTPS.");
+          }
+          const config = [
+            `window.TASTESEE_SUPABASE_URL = ${JSON.stringify(parsedUrl.origin)};`,
+            `window.TASTESEE_SUPABASE_ANON_KEY = ${JSON.stringify(key)};`,
+            "",
+            "if (!window.supabase) {",
+            '  console.error("Taste & See could not load the Supabase client library.");',
+            "} else {",
+            "  window.supabaseClient = window.supabase.createClient(",
+            "    window.TASTESEE_SUPABASE_URL,",
+            "    window.TASTESEE_SUPABASE_ANON_KEY",
+            "  );",
+            "}",
+            "",
+          ].join("\n");
+          fs.writeFileSync(
+            path.join(process.env.GITHUB_WORKSPACE, "frontend/js/supabase-config.js"),
+            config,
+            "utf8"
+          );
+          NODE
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

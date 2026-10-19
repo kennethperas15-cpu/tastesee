@@ -527,10 +527,15 @@ async function init(){
   renderCart(); observeReveals();
   try {
   const categories={classic:["swirl","The original"],tiramisu:["coffee","A little indulgence"],biscoff:["crunchy","Sweet & spiced"],oreo:["chocolate","Chocolate lover"]};
+  const photoNames={classic:"classic",tiramisu:"tiramisu",biscoff:"biscoff",oreo:"oreo"};
   CATALOG=(await TasteSeeDB.products()).map(product=>{
-    const [category,tag]=categories[product.name.toLowerCase()]||["signature","Fresh from our oven"];
+    const key=String(product.name||"").trim().toLowerCase();
+    const [category,tag]=categories[key]||["signature","Fresh from our oven"];
+    const photoSlug=photoNames[key];
+    const photo=photoSlug?`./assets/${photoSlug}.jpg`:null;
+    const photoChain=photoSlug?[".png",".webp",".jpeg"].map(extension=>`./assets/${photoSlug}${extension}`).join(","):"";
     return {id:product.id,name:product.name,price:product.price_cents/100,emoji:product.emoji||"🥮",
-      desc:product.description||"",tag,category};
+      desc:product.description||"",tag,category,photo,photoChain};
   });
   renderMenu();
   await refreshCustomerSession();
@@ -670,11 +675,20 @@ window.addEventListener("scroll", ()=>{
     scrollFrame = 0;
   });
 }, {passive:true});
+function handleProductPhotoError(image){
+  const chain=(image.dataset.chain||"").split(",").filter(Boolean);
+  if(chain.length){
+    image.dataset.chain=chain.slice(1).join(",");
+    image.src=chain[0];
+  } else {
+    image.remove();
+  }
+}
 function renderMenu(){
   const products=menuFilter==="all"?CATALOG:CATALOG.filter(p=>p.category===menuFilter);
   $("menuGrid").innerHTML = products.map(p=>`
     <article class="bun-card reveal bg-white rounded-[1.5rem] border border-stone-200/80 p-4 sm:p-5 flex flex-col min-w-0 shadow-sm" style="transition-delay:${CATALOG.indexOf(p)*70}ms">
-      <div class="relative grid aspect-[1.16] place-items-center overflow-hidden rounded-[1.15rem] bg-gradient-to-br from-sky-100 via-white to-blue-100"><div class="absolute h-28 w-28 rounded-full bg-white/70 blur-xl"></div><div class="relative text-7xl drop-shadow-sm">${p.emoji}</div><span class="absolute left-3 top-3 rounded-full border border-white/80 bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-800">${p.tag}</span></div>
+      <div class="relative grid aspect-[1.16] place-items-center overflow-hidden rounded-[1.15rem] bg-gradient-to-br from-sky-100 via-white to-blue-100"><div class="absolute h-28 w-28 rounded-full bg-white/70 blur-xl"></div><div class="relative text-7xl drop-shadow-sm" aria-hidden="true">${p.emoji}</div>${p.photo?`<img src="${p.photo}" data-chain="${p.photoChain}" alt="${escapeHTML(p.name)} cinnamon bun" loading="lazy" class="absolute inset-0 h-full w-full object-cover" onerror="handleProductPhotoError(this)"/>`:""}<span class="absolute left-3 top-3 rounded-full border border-white/80 bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-800">${p.tag}</span></div>
       <div class="mt-4 font-black text-lg leading-snug">${p.name}</div>
       <div class="mt-1 text-sm leading-relaxed text-stone-500 flex-1">${p.desc}</div>
       <div class="mt-4 flex items-center gap-2"><b class="whitespace-nowrap text-lg">${money(p.price*100)}</b>

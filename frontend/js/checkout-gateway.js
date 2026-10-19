@@ -16,7 +16,6 @@
   const LIMIT_MESSAGE = "Order Limit Reached: You can only purchase a maximum of 10 boxes per order.";
   const RPC_MISSING = /PGRST202|Could not find the function|schema cache/i;
 
-  let slotState = null;
   let cachedClientIp = null;
 
   function showLimitModal() {
@@ -120,15 +119,6 @@
     };
   }
 
-  async function refreshStatus() {
-    const client = window.supabaseClient;
-    if (!client) throw new Error("The storefront is not connected.");
-    const { data, error } = await client.rpc("get_slot_status");
-    if (error) throw error;
-    slotState = data;
-    return slotState;
-  }
-
   // Read-only "middleware" check. The create_order RPC repeats all of these
   // checks atomically, so this preflight is advisory only.
   async function preflight({ boxCount, metadata }) {
@@ -154,13 +144,15 @@
     return error;
   }
 
-  async function submit({ name, phone, kind, address, delivery, items, subtotalCents, discountCents, totalCents, estimatedReadyAt }) {
-    const boxCount = (items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
-    if (!Number.isInteger(boxCount) || boxCount < 1) throw errorWithCode("Add at least one box before placing your order.", "empty");
-    if (boxCount > MAX_BOXES) throw errorWithCode(LIMIT_MESSAGE, "order_limit");
+  async function submit({ name, phone, kind, address, delivery, boxCount, items, subtotalCents, discountCents, totalCents, estimatedReadyAt }) {
+    const boxes = Number(boxCount);
+    const bunCount = (items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+    if (!Number.isInteger(boxes) || boxes < 1) throw errorWithCode("Add at least one box before placing your order.", "empty");
+    if (boxes > MAX_BOXES) throw errorWithCode(LIMIT_MESSAGE, "order_limit");
+    if (bunCount !== boxes * 4) throw errorWithCode("Each box must hold exactly 4 buns before checkout.", "incomplete_box");
 
-    const metadata = await collectMetadata({ kind, delivery, address });
-    const decision = await preflight({ boxCount, metadata });
+    const metadata = await collectMetadata({ kind, delivery: delivery || {}, address });
+    const decision = await preflight({ boxCount: boxes, metadata });
     if (!decision.allowed) throw errorWithCode(decision.message || "Checkout validation failed.", decision.code || "blocked");
 
     const order = await window.TasteSeeDB.createOrder({
@@ -168,10 +160,11 @@
       phone,
       kind,
       address: kind === "delivery" ? address : "",
-      delivery_lat: kind === "delivery" ? delivery.lat : null,
-      delivery_lng: kind === "delivery" ? delivery.lng : null,
-      delivery_distance_meters: kind === "delivery" ? delivery.distanceMeters : 0,
-      delivery_fee_cents: kind === "delivery" ? delivery.feeCents : 0,
+      delivery_lat: kind === "delivery" ? (delivery?.lat ?? null) : null,
+      delivery_lng: kind === "delivery" ? (delivery?.lng ?? null) : null,
+      delivery_distance_meters: 0,
+      delivery_fee_cents: 0,
+      box_count: boxes,
       subtotal_cents: subtotalCents,
       discount_cents: discountCents,
       total_cents: totalCents,
@@ -186,7 +179,6 @@
       })),
     });
 
-    slotState = null;
     return { order, metadata };
   }
 
@@ -195,8 +187,6 @@
     LIMIT_MESSAGE,
     showLimitModal,
     collectMetadata,
-    refreshStatus,
     submit,
-    getStatus: () => slotState,
   };
 })();

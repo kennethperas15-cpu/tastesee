@@ -81,7 +81,7 @@ alter table public.orders add column if not exists customer_id uuid references a
 create index if not exists orders_customer_id_idx on public.orders (customer_id);
 
 -- ORDERING LIMITS + FRAUD PREVENTION
--- box_count is the number of bun boxes in the transaction (1–10).
+-- box_count is the number of 4-bun boxes in the transaction (1–10).
 -- order_day is the Asia/Manila calendar day used by the duplicate guard.
 alter table public.orders add column if not exists box_count int not null default 1;
 alter table public.orders add column if not exists device_key text;
@@ -90,6 +90,10 @@ alter table public.orders add column if not exists location_key text;
 alter table public.orders add column if not exists location_source text;
 alter table public.orders add column if not exists client_ip text;
 alter table public.orders add column if not exists order_day date not null default ((now() at time zone 'Asia/Manila')::date);
+
+-- Migrations run from the SQL editor without a staff JWT, so the order-update
+-- guard trigger would reject the backfills below. It is recreated afterwards.
+drop trigger if exists guard_staff_order_update on public.orders;
 
 -- Existing orders must keep their real day instead of the migration date.
 update public.orders
@@ -123,16 +127,17 @@ create table if not exists order_items (
   order_id uuid not null references orders(id) on delete cascade,
   product_id uuid references products(id) on delete set null,
   product_name text not null,
-  qty int not null check (qty between 1 and 10),
+  qty int not null check (qty between 1 and 40),
   unit_price_cents int not null,
   customizations jsonb default '{}'
 );
 
 -- Backfill legacy orders from their item quantities once.
+-- Legacy buns were counted one per box; the new model packs 4 buns per box.
 update public.orders o
-set box_count = least(10, greatest(1, (
-  select coalesce(sum(i.qty), 1)::int from public.order_items i where i.order_id = o.id
-)))
+set box_count = least(10, greatest(1, ceil((
+  select coalesce(sum(i.qty), 1)::numeric from public.order_items i where i.order_id = o.id
+) / 4.0)::int))
 where o.box_count = 1
   and exists (
     select 1 from public.order_items i
@@ -141,9 +146,9 @@ where o.box_count = 1
     having sum(i.qty) <> 1
   );
 
--- Tighten the per-line quantity to the 1–10 box rule on existing installs too.
+-- One line can hold up to 40 buns (10 boxes x 4 buns).
 alter table public.order_items drop constraint if exists order_items_qty_check;
-alter table public.order_items add constraint order_items_qty_check check (qty between 1 and 10);
+alter table public.order_items add constraint order_items_qty_check check (qty between 1 and 40);
 
 -- POOL PARTICIPANTS
 create table if not exists pool_participants (
@@ -302,15 +307,23 @@ grant execute on function public.list_staff_access() to authenticated;
 grant execute on function public.set_staff_access(text, text) to authenticated;
 grant execute on function public.remove_staff_access(text) to authenticated;
 
--- SLOT CAPACITY: the daily box limit. Everyone can read the status;
--- ONLY an admin or the owner may change the limit, and never below 60.
+-- SLOT CAPACITY: the daily box limit.
+-- The remaining daily slot counts are private to admin/owner accounts. The
+-- customer-facing storefront never sees them; it only gets the delivery notice.
 create or replace function public.get_slot_status()
 returns jsonb
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
+declare
+  result jsonb;
+begin
+  if not public.has_staff_role(array['admin', 'owner']) then
+    raise exception 'Daily slot details are available to admin and owner accounts only.';
+  end if;
+
   select jsonb_build_object(
     'capacity', s.slot_capacity,
     'min_capacity', 60,
@@ -318,6 +331,7 @@ as $$
     'remaining', greatest(0, s.slot_capacity - coalesce(used.boxes, 0)),
     'delivery_notice', coalesce(s.delivery_notice, '')
   )
+  into result
   from public.store_settings s
   left join (
     select sum(o.box_count)::int as boxes
@@ -326,6 +340,20 @@ as $$
       and o.order_day = (now() at time zone 'Asia/Manila')::date
   ) used on true
   limit 1;
+
+  return result;
+end;
+$$;
+
+-- The delivery notice is customer-facing, but carries no slot numbers.
+create or replace function public.get_delivery_notice()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select delivery_notice from public.store_settings order by id limit 1), '');
 $$;
 
 create or replace function public.update_slot_capacity(p_capacity int)
@@ -354,9 +382,11 @@ begin
 end;
 $$;
 
-revoke all on function public.get_slot_status() from public;
+revoke all on function public.get_slot_status() from public, anon;
+revoke all on function public.get_delivery_notice() from public;
 revoke all on function public.update_slot_capacity(int) from public, anon;
-grant execute on function public.get_slot_status() to anon, authenticated;
+grant execute on function public.get_slot_status() to authenticated;
+grant execute on function public.get_delivery_notice() to anon, authenticated;
 grant execute on function public.update_slot_capacity(int) to authenticated;
 
 create or replace function public.update_delivery_notice(p_notice text)
@@ -432,10 +462,7 @@ begin
     return jsonb_build_object(
       'allowed', false,
       'code', 'slots_full',
-      'message', format('Today''s order slots are full (%s of %s boxes booked). Please try again tomorrow.', slots_used, slots_capacity),
-      'capacity', slots_capacity,
-      'used_today', slots_used,
-      'remaining', greatest(0, slots_capacity - slots_used)
+      'message', 'Today''s order slots are full. Please try again tomorrow.'
     );
   end if;
 
@@ -456,14 +483,7 @@ begin
     end if;
   end if;
 
-  return jsonb_build_object(
-    'allowed', true,
-    'code', 'ok',
-    'capacity', slots_capacity,
-    'used_today', slots_used,
-    'remaining', greatest(0, slots_capacity - slots_used),
-    'remaining_after', greatest(0, slots_capacity - slots_used - p_box_count)
-  );
+  return jsonb_build_object('allowed', true, 'code', 'ok');
 end;
 $$;
 
@@ -684,7 +704,7 @@ as $$
 declare
   new_order_id uuid;
   expected_subtotal int;
-  order_box_count int;
+  order_bun_count int;
   base_price_cents int;
   expected_unit_cents int;
   item jsonb;
@@ -712,17 +732,21 @@ begin
     raise exception 'A delivery address is required.';
   end if;
 
+  -- Delivery is not fulfilled in-house: the customer books Grab/Lalamove/Maxim
+  -- and pays that rider directly, so the store never charges a delivery fee.
   if p_kind = 'delivery' then
-    if p_delivery_lat is null or p_delivery_lng is null
-      or p_delivery_lat not between 10.25 and 10.39
-      or p_delivery_lng not between 123.78 and 123.96
-      or p_delivery_distance_meters is null or p_delivery_distance_meters < 0
-      or p_delivery_fee_cents is null
-      or p_delivery_fee_cents <> 4000 + round(p_delivery_distance_meters * 1.2)::int then
-      raise exception 'Delivery coordinates, distance, or fee are invalid.';
+    if p_delivery_fee_cents is null or p_delivery_fee_cents <> 0
+      or coalesce(p_delivery_distance_meters, 0) <> 0 then
+      raise exception 'Delivery is handled by your own rider booking, so no delivery fee is charged by the store.';
+    end if;
+    if (p_delivery_lat is not null or p_delivery_lng is not null)
+      and (p_delivery_lat is null or p_delivery_lng is null
+        or p_delivery_lat not between 10.25 and 10.39
+        or p_delivery_lng not between 123.78 and 123.96) then
+      raise exception 'Delivery coordinates are invalid.';
     end if;
   elsif p_delivery_lat is not null or p_delivery_lng is not null
-    or p_delivery_distance_meters <> 0 or p_delivery_fee_cents <> 0 then
+    or coalesce(p_delivery_distance_meters, 0) <> 0 or coalesce(p_delivery_fee_cents, 0) <> 0 then
     raise exception 'Pickup orders cannot include delivery details.';
   end if;
 
@@ -735,27 +759,28 @@ begin
   end if;
 
   select coalesce(sum((value->>'qty')::int), 0)
-  into order_box_count
+  into order_bun_count
   from jsonb_array_elements(p_items);
 
   -- A transaction carries between 1 and 10 boxes, never more.
-  if order_box_count < 1 or order_box_count > 10 then
+  if p_box_count is null or p_box_count < 1 or p_box_count > 10 then
     raise exception 'Order Limit Reached: You can only purchase a maximum of 10 boxes per order.';
   end if;
 
-  if p_box_count is null or p_box_count < 1 or p_box_count > 10 or p_box_count <> order_box_count then
-    raise exception 'Order box count does not match its items.';
+  -- Every box is a fixed 4-bun box.
+  if order_bun_count <> p_box_count * 4 then
+    raise exception 'Each box must hold exactly 4 buns (received % buns for % boxes).', order_bun_count, p_box_count;
   end if;
 
   if p_pool_id is not null then
     if p_discount_cents <> round(p_subtotal_cents * 0.15) then
       raise exception 'Bake Pool discount is invalid.';
     end if;
-  elsif p_discount_cents <> ((order_box_count / 4) * 1000) then
+  elsif p_discount_cents <> ((order_bun_count / 4) * 1000) then
     raise exception 'Four-bun box discount is invalid.';
   end if;
 
-  if p_total_cents <> p_subtotal_cents - p_discount_cents + p_delivery_fee_cents then
+  if p_total_cents <> p_subtotal_cents - p_discount_cents + coalesce(p_delivery_fee_cents, 0) then
     raise exception 'Order total is invalid.';
   end if;
 
@@ -772,8 +797,8 @@ begin
   from public.orders
   where status <> 'cancelled' and order_day = today;
 
-  if slots_used + order_box_count > slots_capacity then
-    raise exception 'Today''s order slots are full (% of % boxes booked). Please try again tomorrow.', slots_used, slots_capacity;
+  if slots_used + p_box_count > slots_capacity then
+    raise exception 'Today''s order slots are full. Please try again tomorrow.';
   end if;
 
   -- Duplicate guard: same location AND same device/unit already ordered today.
@@ -801,8 +826,8 @@ begin
     trim(p_customer_name), coalesce(p_phone, ''), p_kind, coalesce(p_address, ''),
     'pending', p_subtotal_cents, p_discount_cents, p_total_cents,
     p_pool_id, p_pool_id is not null, p_estimated_ready_at,
-    p_delivery_lat, p_delivery_lng, p_delivery_distance_meters, p_delivery_fee_cents, auth.uid(),
-    order_box_count, device_hash, nullif(trim(coalesce(p_device_model, '')), ''),
+    p_delivery_lat, p_delivery_lng, coalesce(p_delivery_distance_meters, 0), coalesce(p_delivery_fee_cents, 0), auth.uid(),
+    p_box_count, device_hash, nullif(trim(coalesce(p_device_model, '')), ''),
     clean_location, nullif(trim(coalesce(p_location_source, '')), ''),
     nullif(trim(coalesce(p_client_ip, '')), ''), today
   ) returning id into new_order_id;
@@ -821,7 +846,7 @@ begin
 
     if base_price_cents is null
       or coalesce((item->>'qty')::int, 0) < 1
-      or coalesce((item->>'qty')::int, 0) > 10 then
+      or coalesce((item->>'qty')::int, 0) > 40 then
       raise exception 'An order item is not on the current menu.';
     end if;
 

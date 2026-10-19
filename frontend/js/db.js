@@ -107,6 +107,12 @@ window.TasteSeeDB = {
     if (error) throw error;
     return data || { capacity: 80, min_capacity: 60, used_today: 0, remaining: 80 };
   },
+  deliveryNotice: async () => {
+    const client = await requireSupabase();
+    const { data, error } = await client.rpc("get_delivery_notice");
+    if (error) throw error;
+    return typeof data === "string" ? data : "";
+  },
   updateSlotCapacity: async capacity => {
     const value = Number(capacity);
     if (!Number.isInteger(value) || value < 60) {
@@ -147,9 +153,11 @@ window.TasteSeeDB = {
     const client = await requireSupabase();
     const customer = await window.TasteSeeDB.currentCustomer();
     if (!customer) throw new Error("Sign in with a customer Google account before placing an order.");
-    const boxCount = (order.items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+    const boxCount = Number(order.box_count);
+    const bunCount = (order.items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
     if (!Number.isInteger(boxCount) || boxCount < 1) throw new Error("Add at least one box to place an order.");
     if (boxCount > 10) throw new Error("Order Limit Reached: You can only purchase a maximum of 10 boxes per order.");
+    if (bunCount !== boxCount * 4) throw new Error("Each box must hold exactly 4 buns.");
     const payload = {
       p_customer_name: order.customer_name,
       p_phone: order.phone || "",
@@ -180,10 +188,11 @@ window.TasteSeeDB = {
     let { data, error } = await client.rpc("create_order", payload);
 
     // Transitional fallback: if the ordering migration has not been applied
-    // yet, keep legacy (four-box) checkout working instead of breaking sales.
+    // yet, keep a single legacy (four-bun) checkout working instead of
+    // breaking sales.
     if (error && /PGRST202|Could not find the function|schema cache/i.test(String(error.message || ""))) {
-      if (boxCount > 4) {
-        throw new Error("The 10-box ordering update is not active on the server yet. Please ask the owner to apply backend/supabase/schema.sql.");
+      if (bunCount > 4) {
+        throw new Error("The new box ordering update is not active on the server yet. Please ask the owner to apply backend/supabase/schema.sql.");
       }
       ({ data, error } = await client.rpc("create_order", {
         p_customer_name: payload.p_customer_name,

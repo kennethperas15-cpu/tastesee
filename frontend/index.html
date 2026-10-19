@@ -127,7 +127,7 @@
   <div class="trust-strip overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
     <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">4 favourite flavours</div><div class="mt-1 text-xs text-stone-500">Made fresh in small batches</div></div>
     <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">Build a bun box</div><div class="mt-1 text-xs text-stone-500">Choose up to ten favourites</div></div>
-    <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">Cebu City delivery</div><div class="mt-1 text-xs text-stone-500">Choose pickup or map-pin delivery</div></div>
+    <div class="trust-item px-4 py-4 text-center"><div class="text-sm font-black text-sky-800">Pickup or your rider</div><div class="mt-1 text-xs text-stone-500">Pickup 10 AM – 2 PM · delivery via your app</div></div>
   </div>
 </section>
 
@@ -148,27 +148,27 @@
 <section id="orderBox" class="reveal mx-auto max-w-6xl px-3 sm:px-4 py-8 scroll-mt-20">
   <div class="overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#fff4df] via-white to-[#edf8fc] p-4 shadow-[0_18px_45px_rgba(111,91,65,.08)] sm:p-7">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Step 1 · Customize your flavours</div><h2 class="mt-1 text-2xl font-black sm:text-3xl">Build your bun order</h2><p class="mt-1 text-sm text-stone-500">₱65 each · 2 for ₱130 · 4 for ₱250.</p><p class="mt-1 text-xs text-stone-500">Choose 1–10 boxes; mix and match your favourite flavours.</p></div>
+      <div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Step 1 · Customize your flavours</div><h2 class="mt-1 text-2xl font-black sm:text-3xl">Build your bun box</h2><p class="mt-1 text-sm text-stone-500">₱65 per bun · every box holds exactly 4 buns.</p><p class="mt-1 text-xs text-stone-500">Mix and match flavours, then add up to 10 boxes.</p></div>
       <div class="self-start sm:self-auto sm:text-right">
-        <span id="boxCount" class="inline-block rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-600">0 of 10 boxes</span>
+        <span id="boxCount" class="inline-block rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-600">1 of 10 boxes</span>
       </div>
     </div>
-    <div id="boxSlots" class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5" aria-label="Your ten-slot cinnamon bun order"></div>
-    <div class="mt-4 flex justify-center">
+    <div id="boxSlots" class="mt-5 space-y-4" aria-label="Your bun boxes"></div>
+    <div id="boxHint" role="status" class="mt-3 text-xs font-semibold text-stone-500">Each box holds exactly 4 buns. Fill all 4 slots to continue.</div>
+    <div class="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row">
+      <button id="addBoxButton" type="button" onclick="addAnotherBox()" class="inline-flex min-h-11 items-center justify-center rounded-full border border-sky-200 bg-white px-6 py-3 text-sm font-extrabold text-sky-800 transition hover:bg-sky-50">+ Add Another Box</button>
       <button id="reviewButton" onclick="reviewOrder()" class="soft-button rounded-full bg-sky-600 px-7 py-3.5 text-sm font-extrabold text-white hover:bg-sky-700">Review order <span aria-hidden="true">↓</span></button>
     </div>
     <div id="receiptPanel" class="receipt-paper" aria-hidden="true">
       <div class="receipt-sheet mx-auto mt-6 max-w-2xl border-x border-dashed border-stone-300 px-4 py-5 sm:px-8 sm:py-7">
         <div class="text-center"><div class="text-xs font-bold uppercase tracking-[.25em] text-stone-400">Taste &amp; See · Cebu City</div><h3 class="mt-1 text-xl font-black">Your little order</h3><div class="mt-1 text-[11px] font-bold uppercase tracking-[.18em] text-sky-700">Step 2 · Checkout &amp; slot validation</div><div class="mt-1 text-xs text-stone-500">Freshly made, packed with love</div><div class="mt-2 text-xs text-stone-500">Prepared for <b id="receiptCustomer">Guest</b></div></div>
         <div id="cartItems" class="mt-4 space-y-2"></div>
-        <div id="slotStatus" role="status" class="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-xs font-semibold text-sky-900">Checking today’s slots…</div>
         <div id="deliveryNotice" role="status" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-950"></div>
         <div class="mt-4 space-y-2 border-t border-dashed border-stone-300 pt-4 text-sm">
           <div class="flex justify-between"><span>Subtotal</span><b id="tSub">₱0.00</b></div>
-          <div id="boxDiscountRow" class="hidden flex justify-between text-sky-700"><span>Box savings (4+ boxes)</span><b id="tDisc">−₱0.00</b></div>
-          <div class="flex justify-between"><span>Delivery</span><b id="tDel">₱0.00</b></div>
+          <div id="boxDiscountRow" class="hidden flex justify-between text-sky-700"><span>Box savings (every 4 buns)</span><b id="tDisc">−₱0.00</b></div>
           <div class="flex justify-between border-t border-stone-200 pt-2 text-lg"><span class="font-black">Total</span><b id="tTot">₱0.00</b></div>
-          <div class="text-[11px] text-stone-400">Box price is based on the number of cinnamon buns.</div>
+          <div class="text-[11px] text-stone-400">Each box holds exactly 4 buns. Every full box saves ₱10.</div>
         </div>
         <div class="mt-5 border-t border-dashed border-stone-300 pt-5">
           <h4 class="font-black">Where should we bring it?</h4>
@@ -177,22 +177,17 @@
             <input id="coPhone" placeholder="Phone" autocomplete="tel" class="w-full rounded-xl border border-stone-200 bg-white/90 px-3 py-3 text-sm" />
           </div>
           <div class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="pickup" checked onchange="coKind()" /> 🏃 Pickup (free)</label>
-            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="delivery" onchange="coKind()" /> 🛵 Delivery (₱40 + ₱12/km)</label>
+            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="pickup" checked onchange="coKind()" /> 🏃 Pickup (10:00 AM – 2:00 PM)</label>
+            <label class="rounded-xl border border-stone-200 bg-white/80 p-3"><input type="radio" name="kind" value="delivery" onchange="coKind()" /> 🛵 Delivery (book your own rider)</label>
           </div>
           <div class="mt-3 rounded-xl bg-amber-50/80 p-3 text-sm">
-            <div class="flex justify-between"><span>Delivery fee</span><b id="coFee">₱0.00</b></div>
-            <div class="mt-1 flex justify-between text-base"><span class="font-bold">Order total</span><b id="coTotal">₱0.00</b></div>
+            <div class="flex justify-between text-base"><span class="font-bold">Order total</span><b id="coTotal">₱0.00</b></div>
+            <div class="mt-1 text-[11px] leading-relaxed text-stone-600">No in-house delivery. You book and pay Grab, Lalamove, Maxim, or your preferred rider app directly.</div>
           </div>
           <div id="coDeliveryFields" class="hidden">
-            <label for="coAddr" class="mt-3 block text-xs font-bold text-stone-600">DELIVERY ADDRESS OR LANDMARK IN CEBU CITY</label>
-            <input id="coAddr" placeholder="Enter your address or landmark" autocomplete="street-address" class="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-3 text-sm" />
-            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <button type="button" onclick="pinCurrentLocation()" class="rounded-full border border-sky-200 bg-white px-4 py-2.5 text-xs font-bold text-sky-800">◎ Use my location</button>
-              <div id="coDistance" class="text-xs text-stone-600">Choose an address or drop-off pin to see the delivery fee.</div>
-            </div>
-            <div id="coMap" class="mt-2 h-64 w-full overflow-hidden rounded-2xl border border-sky-100 bg-sky-50" aria-label="Choose delivery location on map"></div>
-            <div id="coMapNotice" role="status" class="mt-1 text-xs text-stone-500">Tap the map to drop your pin; the blue marker is the bakery.</div>
+            <label for="coAddr" class="mt-3 block text-xs font-bold text-stone-600">DELIVERY ADDRESS OR LANDMARK</label>
+            <input id="coAddr" placeholder="Enter your delivery address or landmark" autocomplete="street-address" class="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-3 text-sm" />
+            <button type="button" onclick="showDeliveryPolicy()" class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sky-700 underline underline-offset-2">Read the delivery policy →</button>
           </div>
           <p class="mt-3 rounded-xl bg-white/80 p-3 text-xs text-stone-500">Online payments are not available yet. No payment details are collected and no online charge is made.</p>
           <div id="coErr" role="alert" class="mt-2 hidden text-sm text-rose-600"></div>
@@ -327,6 +322,24 @@
 
 
 
+<dialog id="deliveryPolicyDlg" class="w-[min(520px,calc(100vw-2rem))] rounded-[1.5rem] border border-sky-200 p-0 shadow-2xl backdrop:bg-slate-900/40">
+  <div class="p-5 sm:p-6" role="dialog" aria-labelledby="deliveryPolicyTitle">
+    <div class="flex items-start gap-3">
+      <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sky-100 text-2xl" aria-hidden="true">🛵</span>
+      <div class="min-w-0 flex-1">
+        <h2 id="deliveryPolicyTitle" class="text-xl font-black text-stone-900">Delivery policy</h2>
+        <div class="mt-2 space-y-2 text-sm leading-relaxed text-stone-600">
+          <p><b class="text-stone-900">We do not offer in-house delivery.</b> Book your preferred app — Grab, Lalamove, Maxim, or similar — and shoulder the delivery fee directly with the rider.</p>
+          <p><b class="text-stone-900">Pickup time window:</b> strictly <b>10:00 AM – 2:00 PM</b> only.</p>
+          <p><b class="text-stone-900">Store pickup address:</b> 38 Edison Street, Lahug, Cebu City, Philippines.</p>
+          <p><b class="text-stone-900">Landmark:</b> 41 Edison Street., Lahug, Cebu City, Philippines.</p>
+        </div>
+      </div>
+    </div>
+    <button type="button" onclick="document.getElementById('deliveryPolicyDlg').close()" class="mt-5 w-full rounded-full bg-sky-600 py-3 text-sm font-extrabold text-white transition hover:bg-sky-700">I understand</button>
+  </div>
+</dialog>
+
 <script>
 (function(){
   const PHYSICAL_STORE = { lat:10.331035, lng:123.905855, name:"Taste & See", address:"38 Edison Street, Lahug, Cebu City" };
@@ -416,101 +429,31 @@ const $ = id => document.getElementById(id);
 const money = c => "₱" + (c/100).toLocaleString("en-PH", {minimumFractionDigits:2, maximumFractionDigits:2});
 const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 let CATALOG = [];
-let cart = [], menuFilter="all";
+let boxes = [newBox()], menuFilter="all";
 let currentCustomer = null, momentsLoading = false;
-let slotState = null;
 const MAX_BOXES = TasteSeeCheckout.MAX_BOXES; // UI cap only; the gateway and database enforce it.
 const STORE_LOCATION = { lat:10.3157, lng:123.8854 };
 const CEBU_BOUNDS = { south:10.25, north:10.39, west:123.78, east:123.96 };
-let checkoutMap = null, checkoutStoreMarker = null, checkoutMarker = null;
-let deliveryDestination = null, deliveryDistanceMeters = null, deliveryFeeCents = 0, quoteRequest = 0;
 let trackingLoading = false, trackingPollTimer = null, trackingMapInstances = {};
 function withinCebu(lat,lng){
   return lat>=CEBU_BOUNDS.south && lat<=CEBU_BOUNDS.north && lng>=CEBU_BOUNDS.west && lng<=CEBU_BOUNDS.east;
 }
-function setCheckoutMarkerPosition(lat,lng){
-  if(!checkoutMarker){
-    checkoutMarker=L.marker([lat,lng],{draggable:true}).addTo(checkoutMap).bindPopup("Your delivery drop-off");
-    checkoutMarker.on("dragend",event=>setDeliveryLocation(event.target.getLatLng().lat,event.target.getLatLng().lng));
-    return;
+// ── Step 1 state: a list of boxes, each with exactly 4 bun slots ──────────────
+function newBox(){ return { slots:[null,null,null,null] }; }
+function productById(pid){ return CATALOG.find(product=>product.id===pid) || null; }
+function totalBuns(){ return boxes.reduce((sum,box)=>sum+box.slots.filter(Boolean).length,0); }
+function boxIsComplete(box){ return box.slots.every(Boolean); }
+function allBoxesComplete(){ return boxes.every(boxIsComplete); }
+function firstEmptySlot(){
+  for(let b=0;b<boxes.length;b++){
+    const s=boxes[b].slots.indexOf(null);
+    if(s!==-1) return {box:b,slot:s};
   }
-  checkoutMarker.setLatLng([lat,lng]);
+  return null;
 }
-async function setDeliveryLocation(lat,lng,address=""){
-  if(!withinCebu(lat,lng)){
-    if(deliveryDestination) setCheckoutMarkerPosition(deliveryDestination.lat,deliveryDestination.lng);
-    $("coMapNotice").textContent="Choose a location within Cebu City.";
-    return;
-  }
-  deliveryDestination={lat,lng};
-  deliveryDistanceMeters=null; deliveryFeeCents=0;
-  if(address) $("coAddr").value=address;
-  else if(!$("coAddr").value.trim() || /^Pinned drop-off \(/.test($("coAddr").value.trim())) {
-    $("coAddr").value=`Pinned drop-off (${lat.toFixed(5)}, ${lng.toFixed(5)}), Cebu City`;
-  }
-  setCheckoutMarkerPosition(lat,lng);
-  $("coMapNotice").textContent="Drop-off pin selected. Drag it to adjust the location.";
-  await updateDeliveryQuote();
-}
-function initCheckoutMap(){
-  if(!window.L) throw new Error("The Leaflet map could not be loaded. Check your connection and reload.");
-  if(!checkoutMap){
-    const bounds=L.latLngBounds([CEBU_BOUNDS.south,CEBU_BOUNDS.west],[CEBU_BOUNDS.north,CEBU_BOUNDS.east]);
-    checkoutMap=L.map("coMap",{maxBounds:bounds,maxBoundsViscosity:1}).setView([STORE_LOCATION.lat,STORE_LOCATION.lng],14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(checkoutMap);
-    checkoutMap.on("click",event=>setDeliveryLocation(event.latlng.lat,event.latlng.lng));
-    checkoutStoreMarker=L.circleMarker([STORE_LOCATION.lat,STORE_LOCATION.lng],{radius:8,color:"#0369a1",fillColor:"#38bdf8",fillOpacity:1,weight:3})
-      .addTo(checkoutMap).bindPopup("Taste & See bakery · delivery starts here");
-  } else {
-    checkoutMap.setView(deliveryDestination?[deliveryDestination.lat,deliveryDestination.lng]:[STORE_LOCATION.lat,STORE_LOCATION.lng]);
-    setTimeout(()=>checkoutMap.invalidateSize(),100);
-  }
-  if(deliveryDestination) setCheckoutMarkerPosition(deliveryDestination.lat,deliveryDestination.lng);
-  setTimeout(()=>checkoutMap.invalidateSize(),100);
-}
-async function estimateRoadDistanceMeters(destination){
-  const url=`https://router.project-osrm.org/route/v1/driving/${STORE_LOCATION.lng},${STORE_LOCATION.lat};${destination.lng},${destination.lat}?overview=false`;
-  const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),6000);
-  try {
-    const response=await fetch(url,{signal:controller.signal});
-    if(!response.ok) throw new Error(`OSRM returned ${response.status}.`);
-    const result=await response.json(), meters=result.routes?.[0]?.distance;
-    if(result.code!=="Ok" || !Number.isFinite(meters) || meters<0) throw new Error("OSRM did not return a driving route.");
-    return {meters:Math.round(meters),approximate:false};
-  } catch {
-    return {meters:Math.max(0,Math.round(distanceBetween(STORE_LOCATION,destination)*1.25)),approximate:true};
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-function distanceBetween(a,b){
-  const radians=value=>value*Math.PI/180, dLat=radians(b.lat-a.lat), dLng=radians(b.lng-a.lng);
-  const h=Math.sin(dLat/2)**2+Math.cos(radians(a.lat))*Math.cos(radians(b.lat))*Math.sin(dLng/2)**2;
-  return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
-}
-async function updateDeliveryQuote(){
-  const request=++quoteRequest;
-  if(!deliveryDestination || $("coAddr").value.trim().length<5){
-    deliveryDistanceMeters=null; deliveryFeeCents=0;
-    $("coDistance").textContent="Enter the address and drop a pin to see the delivery fee.";
-    renderCart(); return;
-  }
-  $("coDistance").textContent="Calculating delivery distance…";
-  const quote=await estimateRoadDistanceMeters(deliveryDestination);
-  if(request!==quoteRequest) return;
-  deliveryDistanceMeters=quote.meters;
-  deliveryFeeCents=Math.round(4000+deliveryDistanceMeters*1.2);
-  const km=(deliveryDistanceMeters/1000).toFixed(1);
-  $("coDistance").textContent=`${km} km · ${quote.approximate?"approx. Haversine road estimate":"OSRM road distance"} · delivery ${money(deliveryFeeCents)}`;
-  renderCart();
-}
-async function pinCurrentLocation(){
-  if(!navigator.geolocation){ $("coMapNotice").textContent="Location services are not available in this browser."; return; }
-  $("coMapNotice").textContent="Finding your location…";
-  navigator.geolocation.getCurrentPosition(
-    position=>setDeliveryLocation(position.coords.latitude,position.coords.longitude),
-    error=>{ $("coMapNotice").textContent=`Could not get your location: ${error.message}`; },
-    {enableHighAccuracy:true,timeout:15000,maximumAge:30000});
+function pruneEmptyBoxes(){
+  boxes=boxes.filter((box,index)=>index===0||box.slots.some(Boolean));
+  if(!boxes.length) boxes=[newBox()];
 }
 function initTrackingMap(order){
   const id=String(order.id), node=$(`track-map-${id}`);
@@ -558,7 +501,7 @@ async function init(){
       desc:product.description||"",tag,category,photo,photoChain};
   });
   renderMenu();
-  refreshSlotStatus();
+  loadDeliveryNotice();
   await refreshCustomerSession();
   if(!currentCustomer){
     const staff=await TasteSeeDB.currentStaff(["admin","baker","driver","owner"]);
@@ -722,9 +665,8 @@ function filterMenu(category,button){
   document.querySelectorAll("#categoryPills .category-pill").forEach(pill=>pill.setAttribute("aria-pressed",String(pill===button)));
   renderMenu();
 }
-function cartUnits(){ return cart.reduce((sum,item)=>sum+item.qty,0); }
-function animateBunDrop(emoji,event,slotIndex){
-  const slot=$("boxSlots").children[slotIndex], source=event?.currentTarget;
+function animateBunDrop(emoji,event,boxIndex,slotIndex){
+  const slot=$("boxSlots").querySelector(`[data-box="${boxIndex}"][data-slot="${slotIndex}"]`), source=event?.currentTarget;
   if(!slot||!source||!Element.prototype.animate) return;
   const from=source.getBoundingClientRect(),to=slot.getBoundingClientRect(),bun=document.createElement("span");
   bun.textContent=emoji; bun.setAttribute("aria-hidden","true");
@@ -733,36 +675,54 @@ function animateBunDrop(emoji,event,slotIndex){
   bun.animate([{transform:"translate(0,0) scale(1)",opacity:1},{transform:`translate(${to.left+to.width/2-from.left-from.width/2}px,${to.top+to.height/2-from.top-from.height/2}px) scale(.55)`,opacity:.4}],{duration:500,easing:"cubic-bezier(.2,.8,.2,1)"}).finished.finally(()=>bun.remove());
 }
 function showOrderLimit(){ TasteSeeCheckout.showLimitModal(); }
-async function refreshSlotStatus(){
-  const node=$("slotStatus"), notice=$("deliveryNotice");
+async function loadDeliveryNotice(){
+  const notice=$("deliveryNotice");
   try {
-    slotState=await TasteSeeCheckout.refreshStatus();
-    if(node){
-      node.classList.toggle("text-rose-700",slotState.remaining<=0);
-      node.textContent=slotState.remaining>0
-        ? `${slotState.remaining} of ${slotState.capacity} slots left today`
-        : "Today’s slots are full — please order again tomorrow.";
-    }
-    if(notice){
-      const text=String(slotState.delivery_notice||"").trim();
-      notice.textContent=text;
-      notice.classList.toggle("hidden",!text);
-    }
-  } catch(error){
-    slotState=null;
-    if(node){ node.classList.add("text-rose-700"); node.textContent="Slot availability could not be loaded."; }
-    if(notice) notice.classList.add("hidden");
+    const text=String(await TasteSeeDB.deliveryNotice() || "").trim();
+    notice.textContent=text;
+    notice.classList.toggle("hidden",!text);
+  } catch {
+    notice.classList.add("hidden");
   }
-  return slotState;
 }
 function addQuickToCart(pid,event){
-  const p=CATALOG.find(item=>item.id===pid);
-  if(cartUnits()>=MAX_BOXES){ showOrderLimit(); return; }
-  const slotIndex=cartUnits();
-  const existing=cart.find(item=>item.pid===p.id);
-  if(existing) existing.qty++;
-  else cart.push({pid:p.id,name:p.name,emoji:p.emoji,qty:1,unit_cents:Math.round(p.price*100)});
-  renderCart(); animateBunDrop(p.emoji,event,slotIndex);
+  const p=productById(pid);
+  if(!p) return;
+  let target=firstEmptySlot();
+  if(!target){
+    if(boxes.length>=MAX_BOXES){ showOrderLimit(); return; }
+    boxes.push(newBox());
+    target={box:boxes.length-1,slot:0};
+  }
+  boxes[target.box].slots[target.slot]=p.id;
+  renderCart();
+  animateBunDrop(p.emoji,event,target.box,target.slot);
+}
+function addAnotherBox(){
+  if(boxes.length>=MAX_BOXES){ showOrderLimit(); return; }
+  boxes.push(newBox());
+  renderCart();
+  $("boxSlots").lastElementChild?.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function removeBox(index){
+  if(boxes.length<=1){ boxes[0]=newBox(); renderCart(); return; }
+  boxes.splice(index,1);
+  pruneEmptyBoxes();
+  renderCart();
+}
+function removeSlot(boxIndex,slotIndex){
+  if(!boxes[boxIndex]) return;
+  boxes[boxIndex].slots[slotIndex]=null;
+  pruneEmptyBoxes();
+  renderCart();
+}
+function removeProduct(pid){
+  let found=null;
+  for(let b=boxes.length-1;b>=0&&!found;b--){
+    const s=boxes[b].slots.lastIndexOf(pid);
+    if(s!==-1) found={box:b,slot:s};
+  }
+  if(found) removeSlot(found.box,found.slot);
 }
 function toggleCart(open){
   $("receiptPanel").classList.toggle("is-open",open);
@@ -770,50 +730,96 @@ function toggleCart(open){
   $("reviewButton").innerHTML=open?'Hide receipt <span aria-hidden="true">↑</span>':'Review order <span aria-hidden="true">↓</span>';
 }
 function totals(){
-  const sub = cart.reduce((a,i)=>a+i.unit_cents*i.qty,0);
-  const disc = Math.floor(cartUnits()/4)*1000;
-  const kind = document.querySelector('input[name="kind"]:checked')?.value || "pickup";
-  const del = cart.length && kind==="delivery" ? deliveryFeeCents : 0;
-  return { sub, disc, del, tot: sub-disc+del };
+  const sub=boxes.reduce((sum,box)=>sum+box.slots.reduce((line,pid)=>line+(pid?(productById(pid)?.price||0)*100:0),0),0);
+  const disc=Math.floor(totalBuns()/4)*1000;
+  return { sub, disc, tot: sub-disc };
+}
+function groupOrderItems(){
+  const grouped={};
+  boxes.forEach(box=>box.slots.forEach(pid=>{
+    const p=productById(pid);
+    if(!p) return;
+    if(!grouped[p.name]) grouped[p.name]={name:p.name,emoji:p.emoji,qty:0,unit_cents:Math.round(p.price*100)};
+    grouped[p.name].qty++;
+  }));
+  return Object.values(grouped);
 }
 function renderCart(){
-  $("cartCount").textContent = cartUnits();
-  $("boxCount").textContent = `${cartUnits()} of ${MAX_BOXES} boxes`;
-  const slotItems=cart.flatMap((item,index)=>Array.from({length:item.qty},()=>({item,index})));
-  $("boxSlots").innerHTML=Array.from({length:MAX_BOXES},(_,slotIndex)=>{
-    const entry=slotItems[slotIndex];
-    if(!entry)return `<div class="bun-slot"><span class="text-xs font-semibold">Slot ${slotIndex+1}</span></div>`;
-    const {item,index}=entry;
-    return `<div class="bun-slot is-filled"><span class="text-3xl" aria-hidden="true">${item.emoji}</span><span class="max-w-full truncate px-1 text-[11px] font-bold">${escapeHTML(item.name)}</span><button type="button" onclick="removeCartUnit(${index})" aria-label="Remove ${escapeHTML(item.name)}" class="absolute -right-1 -top-1 grid h-7 w-7 place-items-center rounded-full bg-white text-sm text-stone-500 shadow">×</button></div>`;
+  $("cartCount").textContent = totalBuns() ? boxes.length : 0;
+  $("boxCount").textContent = `${boxes.length} of ${MAX_BOXES} boxes`;
+  $("boxSlots").innerHTML=boxes.map((box,boxIndex)=>{
+    const filled=box.slots.filter(Boolean).length;
+    return `<article class="rounded-2xl border border-white bg-white/85 p-3 shadow-sm sm:p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="text-xs font-black uppercase tracking-[.16em] text-sky-800">Box ${boxIndex+1}</div>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] font-bold text-stone-600">${filled} of 4 buns</span>
+          ${boxes.length>1?`<button type="button" onclick="removeBox(${boxIndex})" class="text-[10px] font-bold text-rose-600 underline underline-offset-2">Remove box</button>`:""}
+        </div>
+      </div>
+      <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        ${box.slots.map((pid,slotIndex)=>{
+          const p=productById(pid);
+          return p
+            ? `<button type="button" data-box="${boxIndex}" data-slot="${slotIndex}" onclick="removeSlot(${boxIndex},${slotIndex})" class="bun-slot is-filled px-1" aria-label="Remove ${escapeHTML(p.name)} from box ${boxIndex+1} slot ${slotIndex+1}"><span class="text-2xl" aria-hidden="true">${p.emoji}</span><span class="max-w-full truncate px-1 text-[11px] font-bold">${escapeHTML(p.name)}</span><span class="text-[9px] font-semibold text-stone-400">Slot ${slotIndex+1} · tap to remove</span></button>`
+            : `<div data-box="${boxIndex}" data-slot="${slotIndex}" class="bun-slot px-1"><span class="text-xs font-semibold">Slot ${slotIndex+1}</span><span class="text-[10px] text-stone-400">empty</span></div>`;
+        }).join("")}
+      </div>
+    </article>`;
   }).join("");
-  const t = totals();
+
+  const emptySlots=boxes.reduce((count,box)=>count+box.slots.filter(slot=>!slot).length,0);
+  const hint=$("boxHint");
+  if(!totalBuns()){
+    hint.className="mt-3 text-xs font-semibold text-stone-500";
+    hint.textContent="Each box holds exactly 4 buns. Fill all 4 slots to continue.";
+  } else if(emptySlots){
+    hint.className="mt-3 text-xs font-semibold text-amber-700";
+    hint.textContent=`${emptySlots} slot${emptySlots===1?"":"s"} still empty across your boxes. Fill every slot before checkout.`;
+  } else {
+    hint.className="mt-3 text-xs font-semibold text-emerald-700";
+    hint.textContent=`${boxes.length} box${boxes.length===1?"":"es"} ready · ${totalBuns()} buns total.`;
+  }
+
+  const t=totals();
   $("boxDiscountRow").classList.toggle("hidden",t.disc===0);
-  $("cartItems").innerHTML = cart.length ? cart.map((i,x)=>`
-    <div class="flex items-center gap-3 border-b border-dashed border-stone-300 py-2 text-sm"><div class="text-2xl">${i.emoji}</div>
-    <div class="min-w-0 flex-1"><b>${escapeHTML(i.name)} × ${i.qty}</b><div class="text-xs text-stone-500">${money(i.unit_cents)} each</div></div>
-    <div class="text-right"><b>${money(i.unit_cents*i.qty)}</b><br/><button onclick="removeCartUnit(${x})" class="min-h-8 text-xs font-semibold text-rose-600 underline">remove one</button></div></div>`).join("")
+
+  const lines=groupOrderItems();
+  $("cartItems").innerHTML = lines.length
+    ? `${lines.map(i=>`<div class="flex items-center gap-3 border-b border-dashed border-stone-300 py-2 text-sm"><div class="text-2xl">${i.emoji}</div><div class="min-w-0 flex-1"><b>${escapeHTML(i.name)} × ${i.qty}</b><div class="text-xs text-stone-500">${money(i.unit_cents)} per bun</div></div><div class="text-right"><b>${money(i.unit_cents*i.qty)}</b></div></div>`).join("")}
+      <div class="pt-2 text-xs text-stone-500">${boxes.length} box${boxes.length===1?"":"es"} · exactly 4 buns per box</div>`
     : `<div class="py-5 text-center text-sm text-stone-400">Your bun box is waiting for something lovely.</div>`;
-  $("tSub").textContent=money(t.sub); $("tDisc").textContent="−"+money(t.disc); $("tDel").textContent=money(t.del); $("tTot").textContent=money(t.tot);
-  $("coFee").textContent=money(t.del); $("coTotal").textContent=money(t.tot);
+
+  $("tSub").textContent=money(t.sub);
+  $("tDisc").textContent="−"+money(t.disc);
+  $("tTot").textContent=money(t.tot);
+  $("coTotal").textContent=money(t.tot);
 }
-function removeCartUnit(index){ if(cart[index]){cart[index].qty--;if(cart[index].qty<=0)cart.splice(index,1);renderCart();} }
 function reviewOrder(){
   if($("receiptPanel").classList.contains("is-open")){toggleCart(false);return;}
+  if(!totalBuns()){ $("orderBox").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if(!allBoxesComplete()){
+    $("boxHint").className="mt-3 text-xs font-semibold text-rose-700";
+    $("boxHint").textContent="Each box must hold exactly 4 buns. Fill every empty slot before checkout.";
+    $("boxSlots").scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
   openCheckout();
 }
 function openCheckout(){
-  if(!cart.length){ $("orderBox").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if(!totalBuns() || !allBoxesComplete()){ $("orderBox").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   renderCart(); toggleCart(true); coKind();
   $("receiptPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function showDeliveryPolicy(){
+  const dialog=$("deliveryPolicyDlg");
+  if(dialog && typeof dialog.showModal==="function"){ if(!dialog.open) dialog.showModal(); }
+  else alert("We do not offer in-house delivery. Book Grab, Lalamove, Maxim, or your preferred rider app and pay the delivery fee directly. Pickup is strictly 10:00 AM – 2:00 PM. Store: 38 Edison Street, Lahug, Cebu City. Landmark: 41 Edison Street., Lahug, Cebu City.");
 }
 function coKind(){
   const delivery=document.querySelector('input[name="kind"]:checked').value==="delivery";
   $("coDeliveryFields").classList.toggle("hidden",!delivery);
-  if(delivery){
-    try { initCheckoutMap(); }
-    catch(error){ $("coMapNotice").textContent=error.message; }
-    setTimeout(()=>checkoutMap?.invalidateSize(),550);
-  }
+  if(delivery) showDeliveryPolicy();
   renderCart();
 }
 async function placeOrder(){
@@ -824,54 +830,49 @@ async function placeOrder(){
     openAuth();
     return;
   }
-  const boxCount=cartUnits();
-  if(boxCount<1){
+  if(!totalBuns()){
     $("coErr").textContent="Add at least one box before placing your order.";
     $("coErr").classList.remove("hidden"); return;
   }
+  if(!allBoxesComplete()){
+    $("coErr").textContent="Each box must hold exactly 4 buns. Fill every empty slot before checkout.";
+    $("coErr").classList.remove("hidden"); return;
+  }
+  const boxCount=boxes.length;
   if(boxCount>MAX_BOXES){ showOrderLimit(); return; }
   const name = $("coName").value.trim();
   if(name.length<2){ $("coErr").textContent="Please enter your name."; $("coErr").classList.remove("hidden"); return; }
   const kind = document.querySelector('input[name="kind"]:checked').value;
-  if(kind==="delivery" && ($("coAddr").value.trim().length<5 || !deliveryDestination || deliveryDistanceMeters===null)){
-    $("coErr").textContent="Enter your Cebu City address or landmark, choose a map pin, and wait for the delivery quote.";
-    $("coErr").classList.remove("hidden"); return;
-  }
-  if(slotState && slotState.remaining<boxCount){
-    $("coErr").textContent=`Only ${slotState.remaining} slot${slotState.remaining===1?"":"s"} left today. Reduce your order or try again tomorrow.`;
+  if(kind==="delivery" && $("coAddr").value.trim().length<5){
+    $("coErr").textContent="Enter your delivery address or landmark so your booked rider can find you.";
     $("coErr").classList.remove("hidden"); return;
   }
   $("payBtn").disabled=true; $("payBtn").textContent="Placing order…";
   const t = totals();
   try {
     // Flavour selection ends here. The checkout gateway owns quantity,
-    // slot capacity, and duplicate-device checks from this point on.
+    // slot capacity, delivery policy, and duplicate-device checks.
     const {order} = await TasteSeeCheckout.submit({
       name,
       phone: $("coPhone").value.trim(),
       kind,
       address: kind==="delivery" ? $("coAddr").value.trim() : "",
-      delivery: {
-        lat: deliveryDestination?.lat,
-        lng: deliveryDestination?.lng,
-        distanceMeters: deliveryDistanceMeters,
-        feeCents: deliveryFeeCents,
-      },
-      items: cart.map(i=>({ name:i.name, qty:i.qty, unit_price_cents:i.unit_cents, custom:{} })),
+      delivery: {},
+      boxCount,
+      items: groupOrderItems().map(i=>({ name:i.name, qty:i.qty, unit_price_cents:i.unit_cents, custom:{} })),
       subtotalCents: t.sub,
       discountCents: t.disc,
       totalCents: t.tot,
       estimatedReadyAt: new Date(Date.now()+25*60000).toISOString(),
     });
-    cart=[]; renderCart();
+    boxes=[newBox()]; renderCart();
     toggleCart(false);
     $("trackName").value = name;
     $("trackId").value = String(order.id).slice(0,8);
-    await refreshSlotStatus();
-    alert(`Order received! #${String(order.id).slice(0,8)} — estimated ready in ~25 min. No online payment was collected.`);
+    alert(`Order received! #${String(order.id).slice(0,8)} — pickup is 10:00 AM – 2:00 PM. No online payment was collected.`);
     renderTracking();
   } catch(e){
-    const known=["duplicate","slots_full","order_limit","empty"].includes(e.code);
+    const known=["duplicate","slots_full","order_limit","empty","incomplete_box","blocked","unavailable"].includes(e.code);
     $("coErr").textContent=known?e.message:"Failed: "+e.message;
     $("coErr").classList.remove("hidden");
     if(e.code==="order_limit"||/maximum of 10 boxes/i.test(e.message)) showOrderLimit();

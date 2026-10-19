@@ -6,6 +6,9 @@ const customerNameFromUser = user => user.user_metadata?.full_name
 
 function supa() { return window.supabaseClient || null; }
 
+// Admin-level workspace: the owner is a superset of admin.
+const ADMIN_ROLES = ["admin", "owner"];
+
 function isSessionMissing(error) {
   return !!error && (error.name === "AuthSessionMissingError"
     || /auth session missing/i.test(String(error.message || "")));
@@ -83,20 +86,44 @@ window.TasteSeeDB = {
     if (error) throw error;
   },
   staffAccess: async () => {
-    const { client } = await requireStaff(["admin"]);
+    const { client } = await requireStaff(ADMIN_ROLES);
     const { data, error } = await client.rpc("list_staff_access");
     if (error) throw error;
     return data || [];
   },
   setStaffRole: async (email, role) => {
-    const { client } = await requireStaff(["admin"]);
+    const { client } = await requireStaff(ADMIN_ROLES);
     const { error } = await client.rpc("set_staff_access", { p_email: email, p_role: role });
     if (error) throw error;
   },
   revokeStaffRole: async email => {
-    const { client } = await requireStaff(["admin"]);
+    const { client } = await requireStaff(ADMIN_ROLES);
     const { error } = await client.rpc("remove_staff_access", { p_email: email });
     if (error) throw error;
+  },
+  slotStatus: async () => {
+    const client = await requireSupabase();
+    const { data, error } = await client.rpc("get_slot_status");
+    if (error) throw error;
+    return data || { capacity: 80, min_capacity: 60, used_today: 0, remaining: 80 };
+  },
+  updateSlotCapacity: async capacity => {
+    const value = Number(capacity);
+    if (!Number.isInteger(value) || value < 60) {
+      throw new Error("Slot capacity must be a whole number of at least 60 boxes per day.");
+    }
+    const { client } = await requireStaff(ADMIN_ROLES);
+    const { data, error } = await client.rpc("update_slot_capacity", { p_capacity: value });
+    if (error) throw error;
+    return typeof data === "number" ? data : value;
+  },
+  updateDeliveryNotice: async notice => {
+    const text = String(notice || "").trim();
+    if (text.length > 240) throw new Error("Delivery notice must be 240 characters or fewer.");
+    const { client } = await requireStaff(ADMIN_ROLES);
+    const { data, error } = await client.rpc("update_delivery_notice", { p_notice: text });
+    if (error) throw error;
+    return typeof data === "string" ? data : text;
   },
   signOutCustomer: async () => window.TasteSeeDB.signOut(),
   products: async () => {
@@ -120,7 +147,10 @@ window.TasteSeeDB = {
     const client = await requireSupabase();
     const customer = await window.TasteSeeDB.currentCustomer();
     if (!customer) throw new Error("Sign in with a customer Google account before placing an order.");
-    const { data, error } = await client.rpc("create_order", {
+    const boxCount = (order.items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+    if (!Number.isInteger(boxCount) || boxCount < 1) throw new Error("Add at least one box to place an order.");
+    if (boxCount > 10) throw new Error("Order Limit Reached: You can only purchase a maximum of 10 boxes per order.");
+    const payload = {
       p_customer_name: order.customer_name,
       p_phone: order.phone || "",
       p_kind: order.kind,
@@ -134,13 +164,44 @@ window.TasteSeeDB = {
       p_total_cents: order.total_cents,
       p_pool_id: order.pool_id || null,
       p_estimated_ready_at: order.estimated_ready_at || null,
+      p_box_count: boxCount,
+      p_device_key: order.device_key || null,
+      p_device_model: order.device_model || null,
+      p_location_key: order.location_key || null,
+      p_location_source: order.location_source || null,
+      p_client_ip: order.client_ip || null,
       p_items: order.items.map(item => ({
         name: item.name,
         qty: item.qty,
         unit_price_cents: item.unit_price_cents,
         custom: item.custom || {},
       })),
-    });
+    };
+    let { data, error } = await client.rpc("create_order", payload);
+
+    // Transitional fallback: if the ordering migration has not been applied
+    // yet, keep legacy (four-box) checkout working instead of breaking sales.
+    if (error && /PGRST202|Could not find the function|schema cache/i.test(String(error.message || ""))) {
+      if (boxCount > 4) {
+        throw new Error("The 10-box ordering update is not active on the server yet. Please ask the owner to apply backend/supabase/schema.sql.");
+      }
+      ({ data, error } = await client.rpc("create_order", {
+        p_customer_name: payload.p_customer_name,
+        p_phone: payload.p_phone,
+        p_kind: payload.p_kind,
+        p_address: payload.p_address,
+        p_delivery_lat: payload.p_delivery_lat,
+        p_delivery_lng: payload.p_delivery_lng,
+        p_delivery_distance_meters: payload.p_delivery_distance_meters,
+        p_delivery_fee_cents: payload.p_delivery_fee_cents,
+        p_subtotal_cents: payload.p_subtotal_cents,
+        p_discount_cents: payload.p_discount_cents,
+        p_total_cents: payload.p_total_cents,
+        p_pool_id: payload.p_pool_id,
+        p_estimated_ready_at: payload.p_estimated_ready_at,
+        p_items: payload.p_items,
+      }));
+    }
     if (error) throw error;
     return { ...order, id: data, customer_id: customer.id, created_at: new Date().toISOString(), status: "pending" };
   },
@@ -155,6 +216,7 @@ window.TasteSeeDB = {
       delivery_distance_meters: o.delivery_distance_meters, delivery_fee_cents: o.delivery_fee_cents,
       driver_id: o.driver_id, driver_lat: o.driver_lat, driver_lng: o.driver_lng,
       pool_id: o.pool_id, is_pool_order: o.is_pool_order, status: o.status, total_cents: o.total_cents,
+      box_count: o.box_count, device_model: o.device_model, location_source: o.location_source,
       created_at: o.created_at, items: o.order_items || [],
     }));
   },
@@ -209,7 +271,7 @@ window.TasteSeeDB = {
     return data || [];
   },
   resolveStockNotice: async id => {
-    const { client } = await requireStaff(["admin"]);
+    const { client } = await requireStaff(ADMIN_ROLES);
     const { error } = await client.rpc("resolve_stock_notice", { p_notice_id: id });
     if (error) throw error;
   },
@@ -230,7 +292,7 @@ window.TasteSeeDB = {
   },
   deleteProduct: async id => {
     if (!id) throw new Error("Choose a flavour to delete.");
-    const { client } = await requireStaff(["admin"]);
+    const { client } = await requireStaff(ADMIN_ROLES);
     const { error } = await client.rpc("delete_product", { p_product_id: id });
     if (error) throw error;
   },

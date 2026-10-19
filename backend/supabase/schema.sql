@@ -18,6 +18,26 @@ create table if not exists products (
   created_at timestamptz default now()
 );
 
+-- STORE SETTINGS: one row of operational limits.
+-- Slot capacity is the number of bun boxes the kitchen will accept per day.
+-- It may never drop below 60, no matter who is signed in.
+create table if not exists public.store_settings (
+  id boolean primary key default true check (id),
+  slot_capacity int not null default 80 check (slot_capacity >= 60),
+  delivery_notice text not null default '' check (char_length(delivery_notice) <= 240),
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.store_settings
+  add column if not exists delivery_notice text not null default '';
+
+insert into public.store_settings (id) values (true)
+on conflict (id) do nothing;
+
+alter table public.store_settings enable row level security;
+revoke all on public.store_settings from anon, authenticated;
+
 -- BAKE POOLS (unique feature)
 create table if not exists bake_pools (
   id uuid primary key default gen_random_uuid(),
@@ -60,16 +80,70 @@ alter table public.orders add column if not exists driver_lng double precision;
 alter table public.orders add column if not exists customer_id uuid references auth.users(id) on delete set null;
 create index if not exists orders_customer_id_idx on public.orders (customer_id);
 
+-- ORDERING LIMITS + FRAUD PREVENTION
+-- box_count is the number of bun boxes in the transaction (1–10).
+-- order_day is the Asia/Manila calendar day used by the duplicate guard.
+alter table public.orders add column if not exists box_count int not null default 1;
+alter table public.orders add column if not exists device_key text;
+alter table public.orders add column if not exists device_model text;
+alter table public.orders add column if not exists location_key text;
+alter table public.orders add column if not exists location_source text;
+alter table public.orders add column if not exists client_ip text;
+alter table public.orders add column if not exists order_day date not null default ((now() at time zone 'Asia/Manila')::date);
+
+-- Existing orders must keep their real day instead of the migration date.
+update public.orders
+set order_day = (created_at at time zone 'Asia/Manila')::date
+where order_day <> (created_at at time zone 'Asia/Manila')::date;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'orders_box_count_range'
+  ) then
+    alter table public.orders
+      add constraint orders_box_count_range check (box_count between 1 and 10);
+  end if;
+end;
+$$;
+
+-- Backfill legacy orders from their item quantities once.
+-- (Runs after order_items is created, see below.)
+
+-- Hard database guard: one order per device + location per day.
+-- (The older non-unique duplicate index is retired to avoid a redundant index.)
+drop index if exists public.orders_duplicate_guard_idx;
+create unique index if not exists orders_device_location_day_unique
+  on public.orders (device_key, location_key, order_day)
+  where status <> 'cancelled' and device_key is not null and location_key is not null;
+
 -- ORDER ITEMS
 create table if not exists order_items (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references orders(id) on delete cascade,
   product_id uuid references products(id) on delete set null,
   product_name text not null,
-  qty int not null check (qty > 0),
+  qty int not null check (qty between 1 and 10),
   unit_price_cents int not null,
   customizations jsonb default '{}'
 );
+
+-- Backfill legacy orders from their item quantities once.
+update public.orders o
+set box_count = least(10, greatest(1, (
+  select coalesce(sum(i.qty), 1)::int from public.order_items i where i.order_id = o.id
+)))
+where o.box_count = 1
+  and exists (
+    select 1 from public.order_items i
+    where i.order_id = o.id
+    group by i.order_id
+    having sum(i.qty) <> 1
+  );
+
+-- Tighten the per-line quantity to the 1–10 box rule on existing installs too.
+alter table public.order_items drop constraint if exists order_items_qty_check;
+alter table public.order_items add constraint order_items_qty_check check (qty between 1 and 10);
 
 -- POOL PARTICIPANTS
 create table if not exists pool_participants (
@@ -85,13 +159,13 @@ create table if not exists pool_participants (
 -- staff cannot grant themselves access.
 create table if not exists staff_access (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('admin', 'baker')),
+  role text not null check (role in ('admin', 'baker', 'driver', 'owner')),
   created_at timestamptz not null default now()
 );
 
 alter table public.staff_access drop constraint if exists staff_access_role_check;
 alter table public.staff_access add constraint staff_access_role_check
-  check (role in ('admin', 'baker', 'driver'));
+  check (role in ('admin', 'baker', 'driver', 'owner'));
 
 alter table staff_access enable row level security;
 revoke all on public.staff_access from anon, authenticated;
@@ -106,7 +180,8 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.staff_access
-    where user_id = auth.uid() and role = any(p_roles)
+    where user_id = auth.uid()
+      and (role = any(p_roles) or (role = 'owner' and 'admin' = any(p_roles)))
   );
 $$;
 
@@ -150,9 +225,9 @@ begin
     raise exception 'Only an admin can manage staff accounts.';
   end if;
 
-  if p_role is null or p_role not in ('admin', 'baker', 'driver')
+  if p_role is null or p_role not in ('admin', 'owner', 'baker', 'driver')
     or length(trim(coalesce(p_email, ''))) < 3 then
-    raise exception 'Enter a valid email and select admin, baker, or driver.';
+    raise exception 'Enter a valid email and select owner, admin, baker, or driver.';
   end if;
 
   select id into target_user_id
@@ -170,9 +245,9 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('public.staff_access_admins'));
   select role into current_role from public.staff_access where user_id = target_user_id;
-  if current_role = 'admin' and p_role <> 'admin'
-    and (select count(*) from public.staff_access where role = 'admin') <= 1 then
-    raise exception 'The last admin account cannot be downgraded.';
+  if current_role in ('admin', 'owner') and p_role not in ('admin', 'owner')
+    and (select count(*) from public.staff_access where role in ('admin', 'owner')) <= 1 then
+    raise exception 'The last admin or owner account cannot be downgraded.';
   end if;
 
   insert into public.staff_access(user_id, role)
@@ -211,9 +286,9 @@ begin
   if current_role is null then
     raise exception 'That account does not currently have staff access.';
   end if;
-  if current_role = 'admin'
-    and (select count(*) from public.staff_access where role = 'admin') <= 1 then
-    raise exception 'The last admin account cannot be removed.';
+  if current_role in ('admin', 'owner')
+    and (select count(*) from public.staff_access where role in ('admin', 'owner')) <= 1 then
+    raise exception 'The last admin or owner account cannot be removed.';
   end if;
 
   delete from public.staff_access where user_id = target_user_id;
@@ -226,6 +301,174 @@ revoke all on function public.remove_staff_access(text) from public, anon;
 grant execute on function public.list_staff_access() to authenticated;
 grant execute on function public.set_staff_access(text, text) to authenticated;
 grant execute on function public.remove_staff_access(text) to authenticated;
+
+-- SLOT CAPACITY: the daily box limit. Everyone can read the status;
+-- ONLY an admin or the owner may change the limit, and never below 60.
+create or replace function public.get_slot_status()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'capacity', s.slot_capacity,
+    'min_capacity', 60,
+    'used_today', coalesce(used.boxes, 0),
+    'remaining', greatest(0, s.slot_capacity - coalesce(used.boxes, 0)),
+    'delivery_notice', coalesce(s.delivery_notice, '')
+  )
+  from public.store_settings s
+  left join (
+    select sum(o.box_count)::int as boxes
+    from public.orders o
+    where o.status <> 'cancelled'
+      and o.order_day = (now() at time zone 'Asia/Manila')::date
+  ) used on true
+  limit 1;
+$$;
+
+create or replace function public.update_slot_capacity(p_capacity int)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_staff_role(array['admin', 'owner']) then
+    raise exception 'Only an admin or owner can change the daily slot capacity.';
+  end if;
+
+  if p_capacity is null or p_capacity < 60 or p_capacity > 1000 then
+    raise exception 'Slot capacity must be between 60 and 1000 boxes per day.';
+  end if;
+
+  insert into public.store_settings (id, slot_capacity, updated_by, updated_at)
+  values (true, p_capacity, (select auth.uid()), now())
+  on conflict (id) do update
+    set slot_capacity = excluded.slot_capacity,
+        updated_by = excluded.updated_by,
+        updated_at = now();
+
+  return p_capacity;
+end;
+$$;
+
+revoke all on function public.get_slot_status() from public;
+revoke all on function public.update_slot_capacity(int) from public, anon;
+grant execute on function public.get_slot_status() to anon, authenticated;
+grant execute on function public.update_slot_capacity(int) to authenticated;
+
+create or replace function public.update_delivery_notice(p_notice text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  clean_notice text := trim(coalesce(p_notice, ''));
+begin
+  if not public.has_staff_role(array['admin', 'owner']) then
+    raise exception 'Only an admin or owner can change the delivery notice.';
+  end if;
+
+  if char_length(clean_notice) > 240 then
+    raise exception 'The delivery notice must be 240 characters or fewer.';
+  end if;
+
+  update public.store_settings
+  set delivery_notice = clean_notice,
+      updated_by = (select auth.uid()),
+      updated_at = now()
+  where id;
+
+  return clean_notice;
+end;
+$$;
+
+revoke all on function public.update_delivery_notice(text) from public, anon;
+grant execute on function public.update_delivery_notice(text) to authenticated;
+
+-- CHECKOUT GATEWAY (preflight "middleware" for the browser).
+-- This is read-only and returns a structured decision. create_order still
+-- repeats every check atomically before saving, so the gateway can never be
+-- bypassed by calling the RPC directly.
+create or replace function public.check_order_gateway(
+  p_box_count int,
+  p_device_key text default null,
+  p_location_key text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  today date := (now() at time zone 'Asia/Manila')::date;
+  slots_capacity int;
+  slots_used int;
+  clean_location text := nullif(trim(coalesce(p_location_key, '')), '');
+  device_hash text;
+begin
+  if p_box_count is null or p_box_count < 1 or p_box_count > 10 then
+    return jsonb_build_object(
+      'allowed', false,
+      'code', 'order_limit',
+      'message', 'Order Limit Reached: You can only purchase a maximum of 10 boxes per order.'
+    );
+  end if;
+
+  select slot_capacity into slots_capacity from public.store_settings order by id limit 1;
+  select coalesce(sum(box_count), 0) into slots_used
+  from public.orders
+  where status <> 'cancelled' and order_day = today;
+
+  if slots_capacity is null then
+    return jsonb_build_object('allowed', false, 'code', 'unavailable', 'message', 'The kitchen is not accepting orders right now.');
+  end if;
+
+  if slots_used + p_box_count > slots_capacity then
+    return jsonb_build_object(
+      'allowed', false,
+      'code', 'slots_full',
+      'message', format('Today''s order slots are full (%s of %s boxes booked). Please try again tomorrow.', slots_used, slots_capacity),
+      'capacity', slots_capacity,
+      'used_today', slots_used,
+      'remaining', greatest(0, slots_capacity - slots_used)
+    );
+  end if;
+
+  if p_device_key is not null and length(trim(p_device_key)) > 0 and clean_location is not null then
+    device_hash := md5(trim(p_device_key));
+    if exists (
+      select 1 from public.orders o
+      where o.device_key = device_hash
+        and o.location_key = clean_location
+        and o.order_day = today
+        and o.status <> 'cancelled'
+    ) then
+      return jsonb_build_object(
+        'allowed', false,
+        'code', 'duplicate',
+        'message', 'Duplicate order blocked: an order from this same location and device was already placed today.'
+      );
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'allowed', true,
+    'code', 'ok',
+    'capacity', slots_capacity,
+    'used_today', slots_used,
+    'remaining', greatest(0, slots_capacity - slots_used),
+    'remaining_after', greatest(0, slots_capacity - slots_used - p_box_count)
+  );
+end;
+$$;
+
+revoke all on function public.check_order_gateway(int, text, text) from public, anon;
+grant execute on function public.check_order_gateway(int, text, text) to authenticated;
 
 -- Public can browse and place orders, but operational data is staff-only.
 alter table products enable row level security;
@@ -409,6 +652,7 @@ revoke all on function public.join_bake_pool(uuid, text, int, uuid) from public;
 grant execute on function public.join_bake_pool(uuid, text, int, uuid) to anon, authenticated;
 
 drop function if exists public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb);
+drop function if exists public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb, double precision, double precision, int, int);
 
 create or replace function public.create_order(
   p_customer_name text,
@@ -424,7 +668,13 @@ create or replace function public.create_order(
   p_delivery_lat double precision default null,
   p_delivery_lng double precision default null,
   p_delivery_distance_meters int default 0,
-  p_delivery_fee_cents int default 0
+  p_delivery_fee_cents int default 0,
+  p_box_count int default 1,
+  p_device_key text default null,
+  p_device_model text default null,
+  p_location_key text default null,
+  p_location_source text default null,
+  p_client_ip text default null
 )
 returns uuid
 language plpgsql
@@ -434,10 +684,15 @@ as $$
 declare
   new_order_id uuid;
   expected_subtotal int;
-  order_bun_count int;
+  order_box_count int;
   base_price_cents int;
   expected_unit_cents int;
   item jsonb;
+  today date := (now() at time zone 'Asia/Manila')::date;
+  slots_capacity int;
+  slots_used int;
+  device_hash text;
+  clean_location text := nullif(trim(coalesce(p_location_key, '')), '');
 begin
   if (select auth.uid()) is null
     or public.has_staff_role(array['admin', 'baker', 'driver']) then
@@ -480,18 +735,23 @@ begin
   end if;
 
   select coalesce(sum((value->>'qty')::int), 0)
-  into order_bun_count
+  into order_box_count
   from jsonb_array_elements(p_items);
 
-  if order_bun_count < 1 or order_bun_count > 4 then
-    raise exception 'A bun box must contain between one and four buns.';
+  -- A transaction carries between 1 and 10 boxes, never more.
+  if order_box_count < 1 or order_box_count > 10 then
+    raise exception 'Order Limit Reached: You can only purchase a maximum of 10 boxes per order.';
+  end if;
+
+  if p_box_count is null or p_box_count < 1 or p_box_count > 10 or p_box_count <> order_box_count then
+    raise exception 'Order box count does not match its items.';
   end if;
 
   if p_pool_id is not null then
     if p_discount_cents <> round(p_subtotal_cents * 0.15) then
       raise exception 'Bake Pool discount is invalid.';
     end if;
-  elsif p_discount_cents <> (case when order_bun_count = 4 then 1000 else 0 end) then
+  elsif p_discount_cents <> ((order_box_count / 4) * 1000) then
     raise exception 'Four-bun box discount is invalid.';
   end if;
 
@@ -499,15 +759,52 @@ begin
     raise exception 'Order total is invalid.';
   end if;
 
+  -- Serialize slot checks for the day so two customers cannot book the
+  -- same last slot at the same moment.
+  perform pg_advisory_xact_lock(hashtext('taste_see_slots_' || today::text));
+
+  select slot_capacity into slots_capacity from public.store_settings order by id limit 1;
+  if slots_capacity is null then
+    raise exception 'The kitchen is not accepting orders right now.';
+  end if;
+
+  select coalesce(sum(box_count), 0) into slots_used
+  from public.orders
+  where status <> 'cancelled' and order_day = today;
+
+  if slots_used + order_box_count > slots_capacity then
+    raise exception 'Today''s order slots are full (% of % boxes booked). Please try again tomorrow.', slots_used, slots_capacity;
+  end if;
+
+  -- Duplicate guard: same location AND same device/unit already ordered today.
+  if p_device_key is not null and length(trim(p_device_key)) > 0 and clean_location is not null then
+    device_hash := md5(trim(p_device_key));
+    if exists (
+      select 1 from public.orders o
+      where o.device_key = device_hash
+        and o.location_key = clean_location
+        and o.order_day = today
+        and o.status <> 'cancelled'
+    ) then
+      raise exception 'Duplicate order blocked: an order from this same location and device was already placed today.';
+    end if;
+  else
+    device_hash := null;
+  end if;
+
   insert into public.orders (
     customer_name, phone, kind, address, status, subtotal_cents,
     discount_cents, total_cents, pool_id, is_pool_order, estimated_ready_at,
-    delivery_lat, delivery_lng, delivery_distance_meters, delivery_fee_cents, customer_id
+    delivery_lat, delivery_lng, delivery_distance_meters, delivery_fee_cents, customer_id,
+    box_count, device_key, device_model, location_key, location_source, client_ip, order_day
   ) values (
     trim(p_customer_name), coalesce(p_phone, ''), p_kind, coalesce(p_address, ''),
     'pending', p_subtotal_cents, p_discount_cents, p_total_cents,
     p_pool_id, p_pool_id is not null, p_estimated_ready_at,
-    p_delivery_lat, p_delivery_lng, p_delivery_distance_meters, p_delivery_fee_cents, auth.uid()
+    p_delivery_lat, p_delivery_lng, p_delivery_distance_meters, p_delivery_fee_cents, auth.uid(),
+    order_box_count, device_hash, nullif(trim(coalesce(p_device_model, '')), ''),
+    clean_location, nullif(trim(coalesce(p_location_source, '')), ''),
+    nullif(trim(coalesce(p_client_ip, '')), ''), today
   ) returning id into new_order_id;
 
   for item in select value from jsonb_array_elements(p_items) loop
@@ -524,7 +821,7 @@ begin
 
     if base_price_cents is null
       or coalesce((item->>'qty')::int, 0) < 1
-      or coalesce((item->>'qty')::int, 0) > 4 then
+      or coalesce((item->>'qty')::int, 0) > 10 then
       raise exception 'An order item is not on the current menu.';
     end if;
 
@@ -554,8 +851,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb, double precision, double precision, int, int) from public;
-grant execute on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb, double precision, double precision, int, int) to authenticated;
+revoke all on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb, double precision, double precision, int, int, int, text, text, text, text, text) from public;
+grant execute on function public.create_order(text, text, text, text, int, int, int, uuid, timestamptz, jsonb, double precision, double precision, int, int, int, text, text, text, text, text) to authenticated;
 
 create or replace function public.track_orders(p_customer_name text, p_order_id text)
 returns jsonb
@@ -567,6 +864,7 @@ as $$
   select coalesce(jsonb_agg(to_jsonb(matches) order by matches.created_at desc), '[]'::jsonb)
   from (
     select o.id, o.customer_name, o.kind, o.address, o.status, o.total_cents, o.created_at,
+      o.box_count,
       o.delivery_lat, o.delivery_lng, o.delivery_distance_meters, o.delivery_fee_cents,
       o.driver_lat, o.driver_lng,
       coalesce((
@@ -837,6 +1135,10 @@ begin
     raise exception 'Only staff accounts can send messages.';
   end if;
 
+  if sender_role = 'owner' then
+    sender_role := 'admin';
+  end if;
+
   if p_target_role is null
     or p_target_role not in ('admin', 'baker', 'driver')
     or char_length(clean_body) < 1 or char_length(clean_body) > 500 then
@@ -880,6 +1182,10 @@ begin
 
   if viewer_role is null then
     raise exception 'Only staff accounts can read messages.';
+  end if;
+
+  if viewer_role = 'owner' then
+    viewer_role := 'admin';
   end if;
 
   return query

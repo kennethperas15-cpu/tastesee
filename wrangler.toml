@@ -1,0 +1,7 @@
+# Cloudflare Pages configuration.
+# Connect this repository in Cloudflare Pages and use these settings:
+#   Framework preset:    None
+#   Build command:       (leave empty)
+#   Build output folder: frontend
+name = "taste-and-see"
+pages_build_output_dir = "frontend"

@@ -1,0 +1,4 @@
+# Netlify configuration for the Taste & See storefront.
+# The static site lives in /frontend and needs no build step.
+[build]
+  publish = "frontend"

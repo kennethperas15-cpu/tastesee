@@ -88,6 +88,7 @@
       <a class="site-nav-link" href="#menu">Our buns</a>
       <a class="site-nav-link" href="#orderBox">Build a box</a>
       <a class="site-nav-link" href="#story">Our story</a>
+      <a class="site-nav-link" href="#visit">Visit us</a>
       <a class="site-nav-link" href="#community">Community</a>
     </nav>
     <div class="flex shrink-0 items-center gap-2">
@@ -96,7 +97,7 @@
     </div>
   </div>
 </header>
-<!-- HERO -->
+
 <section id="hero" class="hero-shell mx-auto grid max-w-7xl items-center gap-8 px-3 sm:px-5 md:grid-cols-[.92fr_1.08fr] md:gap-12">
   <div class="min-w-0 py-2">
     <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-sky-700">✦ Baked fresh in Cebu City</div>
@@ -129,7 +130,7 @@
   </div>
 </section>
 
-<!-- MENU -->
+
 <section id="menu" class="reveal max-w-6xl mx-auto px-3 sm:px-4 py-10 scroll-mt-20">
   <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Four flavours, all heart</div><h2 class="mt-1 text-2xl sm:text-3xl font-black">Meet your new favourite</h2></div><p class="text-sm text-stone-500">Every bun made fresh, just for you.</p></div>
   <div id="categoryPills" class="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Filter buns by category">
@@ -142,7 +143,7 @@
   <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mt-5"></div>
 </section>
 
-<!-- FOUR-SLOT BOX AND RECEIPT CHECKOUT -->
+
 <section id="orderBox" class="reveal mx-auto max-w-6xl px-3 sm:px-4 py-8 scroll-mt-20">
   <div class="overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#fff4df] via-white to-[#edf8fc] p-4 shadow-[0_18px_45px_rgba(111,91,65,.08)] sm:p-7">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -197,7 +198,6 @@
   </div>
 </section>
 
-<!-- OUR STORY -->
 <section id="story" class="reveal mx-auto max-w-7xl scroll-mt-20 px-3 py-10 sm:px-5">
   <div class="story-panel grid overflow-hidden rounded-[2rem] border border-sky-100 md:grid-cols-[1fr_1.15fr]">
     <div class="flex flex-col justify-center p-5 sm:p-8 lg:p-10">
@@ -223,7 +223,34 @@
   </div>
 </section>
 
-<!-- TASTE & SEE MOMENTS -->
+<section id="visit" class="reveal mx-auto max-w-6xl scroll-mt-20 px-3 py-9 sm:px-4">
+  <div class="overflow-hidden rounded-[2rem] border border-sky-100 bg-white">
+    <div class="grid md:grid-cols-[.8fr_1.4fr]">
+      <div class="flex flex-col justify-center gap-4 p-5 sm:p-8">
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">Prefer to buy in person?</div>
+          <h2 class="mt-1 text-2xl font-black sm:text-3xl">Visit our store</h2>
+          <p class="mt-2 text-sm leading-relaxed text-stone-600">Drop by for warm buns, fresh from the oven. Tap the pin on the map to see exactly where we are.</p>
+        </div>
+        <div class="rounded-2xl bg-sky-50 p-4 text-sm">
+          <div class="font-black text-sky-900">Taste &amp; See</div>
+          <address class="mt-1 not-italic text-stone-600">38 Edison Street, Lahug<br>Cebu City, Philippines</address>
+        </div>
+        <div class="flex flex-col gap-2">
+          <a id="visitDirections" href="#" target="_blank" rel="noopener noreferrer" class="soft-button inline-flex min-h-11 items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-sky-700">Get directions in Google Maps</a>
+          <button type="button" id="visitRouteBtn" class="inline-flex min-h-11 items-center justify-center rounded-full border border-sky-200 bg-white px-5 py-3 text-sm font-bold text-sky-800 transition hover:bg-sky-50">◎ Show my route on this map</button>
+          <a id="visitWaze" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-10 items-center justify-center rounded-full px-5 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50">Open in Waze</a>
+        </div>
+        <div id="visitNotice" role="status" class="min-h-[1.25rem] text-xs text-stone-500"></div>
+      </div>
+      <div class="relative min-h-[320px] md:min-h-[460px]">
+        <div id="visitMap" class="absolute inset-0 z-0 bg-sky-50" aria-label="Map showing the Taste &amp; See store at 38 Edison Street, Lahug, Cebu City"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
 <section id="community" class="reveal mx-auto max-w-6xl px-3 py-9 scroll-mt-20 sm:px-4">
   <div class="overflow-hidden rounded-[2rem] border border-sky-100 bg-gradient-to-br from-[#edf8fc] via-white to-[#fff3e4] p-4 sm:p-7">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -244,7 +271,6 @@
   </div>
 </section>
 
-<!-- TRACKING -->
 <section class="reveal max-w-6xl mx-auto px-3 sm:px-4 pb-20">
   <div class="text-[11px] font-bold uppercase tracking-[.2em] text-sky-700">From our oven to you</div><h2 class="mt-1 text-2xl sm:text-3xl font-black">Follow your order</h2>
   <p class="mt-2 text-sm text-stone-500">Enter your checkout name to see matching orders.</p>
@@ -258,7 +284,6 @@
 
 <footer class="border-t border-sky-100 bg-white text-center text-xs text-stone-500 py-8 px-4"><span class="relative inline-grid place-items-center h-12 w-12 rounded-full overflow-hidden bg-white ring-2 ring-sky-200 text-2xl align-middle">🥮<img src="./assets/logo.png" alt="Taste & See logo" class="absolute inset-0 h-full w-full object-cover" loading="lazy" onload="this.previousSibling.remove()" onerror="this.remove()" /></span><div class="mt-2">Taste &amp; See · Baked fresh, shared with love · All prices in Philippine pesos · <a href="./privacy.html" class="underline underline-offset-2">Privacy</a> · <a href="./terms.html" class="underline underline-offset-2">Terms</a></div><div class="mt-3 flex flex-wrap justify-center gap-2"><a href="https://www.facebook.com/profile.php?id=61592239637190" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on Facebook" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 320 512" class="h-4 w-4 fill-current"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06H297V6.26S260.43 0 225.36 0C152.77 0 105.27 44 105.27 123.72v71.62H24.61V288h80.66v224h99.2V288z"/></svg><span>Facebook</span></a><a href="https://www.instagram.com/tasteandsee.buns?utm_source=ig_web_button_share_sheet&amp;psln=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on Instagram" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="18" cy="6" r="1" fill="currentColor" stroke="none"/></svg><span>Instagram</span></a><a href="https://www.tiktok.com/@tasteandsee_cinnamonbuns?is_from_webapp=1&amp;sender_device=pc" target="_blank" rel="noopener noreferrer" aria-label="Visit Taste &amp; See on TikTok" class="inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 font-bold text-sky-700 transition hover:bg-sky-50 hover:text-sky-900"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-current"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.54v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 1 1 2.9-2.9c0-.22-.03-.44-.07-.65V11.4c-.9-.27-1.85-.3-2.82-.08a6.43 6.43 0 1 0 6.43 6.43V10.8a8.28 8.28 0 0 0 4.85 1.56V8.82c-.38 0-.75-.04-1.08-.13z"/></svg><span>TikTok</span></a></div></footer>
 
-<!-- AUTHENTICATION -->
 <dialog id="authDlg" class="w-[min(460px,calc(100vw-2rem))] rounded-[1.75rem] border border-sky-100 p-0 shadow-2xl backdrop:bg-slate-900/35">
   <div class="p-5 sm:p-7">
     <div class="flex items-start gap-3">
@@ -283,6 +308,90 @@
 </dialog>
 
 
+
+<script>
+(function(){
+  const PHYSICAL_STORE = { lat:10.331035, lng:123.905855, name:"Taste & See", address:"38 Edison Street, Lahug, Cebu City" };
+  const el = id => document.getElementById(id);
+  const notice = text => { const n = el("visitNotice"); if(n) n.textContent = text; };
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  const dest = PHYSICAL_STORE.lat + "," + PHYSICAL_STORE.lng;
+  const gmaps = el("visitDirections"), waze = el("visitWaze");
+  if(gmaps) gmaps.href = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
+  if(waze)  waze.href  = "https://waze.com/ul?ll=" + dest + "&navigate=yes";
+
+  function init(){
+    const node = el("visitMap");
+    if(!node) return;
+    if(!window.L){ notice("The map could not load. Use the directions button instead."); return; }
+
+    const map = L.map(node, { scrollWheelZoom:false, minZoom:11 }).setView([PHYSICAL_STORE.lat, PHYSICAL_STORE.lng], 17);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"&copy; OpenStreetMap contributors" }).addTo(map);
+
+    const icon = L.divIcon({
+      className:"",
+      html:'<div style="width:44px;height:44px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#0284c7;border:3px solid #fff;box-shadow:0 6px 16px rgba(3,105,161,.45);display:grid;place-items:center"><span style="transform:rotate(45deg);font-size:20px">🥮</span></div>',
+      iconSize:[44,44], iconAnchor:[22,44], popupAnchor:[0,-40]
+    });
+    const marker = L.marker([PHYSICAL_STORE.lat, PHYSICAL_STORE.lng], { icon, title:PHYSICAL_STORE.name, alt:PHYSICAL_STORE.name })
+      .addTo(map)
+      .bindPopup("<strong>" + esc(PHYSICAL_STORE.name) + "</strong><br>" + esc(PHYSICAL_STORE.address), { autoPan:true })
+      .openPopup();
+
+    map.once("focus", () => map.scrollWheelZoom.enable());
+    map.on("click", () => map.scrollWheelZoom.enable());
+
+    [100, 600, 1400].forEach(ms => setTimeout(() => map.invalidateSize(), ms));
+    window.addEventListener("resize", () => map.invalidateSize());
+    if("IntersectionObserver" in window){
+      new IntersectionObserver((entries, obs) => { if(entries.some(e => e.isIntersecting)){ map.invalidateSize(); obs.disconnect(); } }).observe(node);
+    }
+
+    let userMarker = null, routeLine = null;
+    const btn = el("visitRouteBtn");
+    const km = m => (m/1000).toFixed(m < 10000 ? 1 : 0) + " km";
+    const mins = s => { const m = Math.max(1, Math.round(s/60)); return m < 60 ? m + " min" : Math.floor(m/60) + " h " + (m%60) + " min"; };
+    const straight = (a, b) => map.distance([a.lat,a.lng],[b.lat,b.lng]);
+
+    async function showRoute(from){
+      if(userMarker) map.removeLayer(userMarker);
+      if(routeLine) map.removeLayer(routeLine);
+      userMarker = L.circleMarker([from.lat, from.lng], { radius:8, color:"#fff", weight:3, fillColor:"#f97316", fillOpacity:1 }).addTo(map).bindPopup("You are here");
+      let info = "";
+      try{
+        const url = "https://router.project-osrm.org/route/v1/driving/" + from.lng + "," + from.lat + ";" + PHYSICAL_STORE.lng + "," + PHYSICAL_STORE.lat + "?overview=full&geometries=geojson";
+        const res = await fetch(url);
+        if(!res.ok) throw new Error("route service unavailable");
+        const data = await res.json();
+        const r = data.routes && data.routes[0];
+        if(!r) throw new Error("no route");
+        routeLine = L.geoJSON(r.geometry, { style:{ color:"#0284c7", weight:5, opacity:.85 } }).addTo(map);
+        info = "About " + km(r.distance) + " by road, roughly " + mins(r.duration) + " by car.";
+      }catch(e){
+        routeLine = L.polyline([[from.lat, from.lng],[PHYSICAL_STORE.lat, PHYSICAL_STORE.lng]], { color:"#0284c7", weight:4, dashArray:"8 8" }).addTo(map);
+        info = "About " + km(straight(from, PHYSICAL_STORE)) + " away in a straight line (road route unavailable right now).";
+      }
+      map.fitBounds(L.latLngBounds([[from.lat, from.lng],[PHYSICAL_STORE.lat, PHYSICAL_STORE.lng]]), { padding:[40,40] });
+      notice(info);
+      if(gmaps) gmaps.href = "https://www.google.com/maps/dir/?api=1&origin=" + from.lat + "," + from.lng + "&destination=" + dest + "&travelmode=driving";
+    }
+
+    if(btn) btn.addEventListener("click", () => {
+      if(!navigator.geolocation){ notice("Location isn't available in this browser. Use the directions button instead."); return; }
+      notice("Finding your location…");
+      btn.disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        pos => { btn.disabled = false; showRoute({ lat:pos.coords.latitude, lng:pos.coords.longitude }); },
+        err => { btn.disabled = false; notice("Couldn't get your location (" + err.message + "). The directions button still works."); },
+        { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
+      );
+    });
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+</script>
 
 <script>
 const $ = id => document.getElementById(id);

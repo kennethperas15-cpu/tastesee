@@ -1314,3 +1314,6 @@ revoke all on function public.create_product(text, text, int, text, text, int) f
 revoke all on function public.delete_product(uuid) from public, anon;
 grant execute on function public.create_product(text, text, int, text, text, int) to authenticated;
 grant execute on function public.delete_product(uuid) to authenticated;
+
+-- Refresh PostgREST's function/schema cache so the browser sees the new RPCs.
+notify pgrst, 'reload schema';

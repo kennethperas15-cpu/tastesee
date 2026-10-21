@@ -1,300 +1,365 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taste & See Cinnamon Buns - Customer Support & Messaging</title>
-    <!-- Tailwind CSS CDN for utility classes -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for gorgeous icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Inter -->
+    <title>Taste & See Cinnamon Buns | Customer Messaging & Delivery Tracker</title>
+    
+    <!-- PyScript CSS & JS -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <!-- Custom Stylesheet -->
-    <link rel="stylesheet" href="style.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#69C5DF',
-                        secondary: '#FFFFFF',
-                        paleBlue: '#EAF8FC',
-                        darkBlue: '#2586A5',
-                        softGray: '#F4F7F9',
-                        bakeryDark: '#2C3E50',
-                        bakeryBrown: '#8B4513'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- PyScript Configuration -->
+    <script type="py" src="main.py" config="pyscript.json"></script>
 </head>
-<body class="h-full bg-softGray font-sans text-bakeryDark antialiased overflow-hidden flex flex-col">
-
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
-
-    <!-- Top Announcement Bar -->
-    <div class="bg-darkBlue text-white text-xs py-1.5 px-4 text-center font-medium tracking-wide flex items-center justify-center gap-2 shadow-inner">
-        <i class="fa-solid fa-cookie-bite text-primary"></i>
-        <span>Taste & See Cinnamon Buns • "Taste and see that the Lord is good." (Psalm 34:8)</span>
-        <button id="sound-toggle-btn" class="ml-4 bg-primary/25 hover:bg-primary/40 px-2 py-0.5 rounded text-[11px] transition flex items-center gap-1 cursor-pointer" title="Toggle Notification Sound">
-            <i id="sound-icon" class="fa-solid fa-volume-high"></i> <span id="sound-text">Sound On</span>
-        </button>
-    </div>
-
-    <!-- App Wrapper -->
-    <div id="app-container" class="flex-1 flex overflow-hidden relative">
-
-        <!-- SIDEBAR (Navigation & Conversations List) -->
-        <aside id="sidebar" class="w-full md:w-80 lg:w-96 bg-secondary border-r border-gray-200 flex flex-col z-20 absolute md:relative inset-y-0 left-0 transition-transform duration-300 transform -translate-x-full md:translate-x-0 shadow-lg md:shadow-none">
-            
-            <!-- Brand & Header -->
-            <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-paleBlue/50">
-                <div class="flex items-center gap-3">
-                    <img id="brand-logo" src="assets/logo.png" onerror="this.src='https://placehold.co/100x100/69C5DF/FFFFFF?text=Logo'" alt="Taste & See Logo" class="w-11 h-11 rounded-full object-cover border-2 border-primary shadow-sm">
-                    <div>
-                        <h1 class="font-bold text-darkBlue text-base leading-tight">Taste & See</h1>
-                        <p class="text-xs text-gray-500 font-medium">Customer Support & Orders</p>
-                    </div>
+<body>
+    <!-- App Container -->
+    <div id="app-container" class="app-layout">
+        
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="Taste & See Cinnamon Buns Logo" class="brand-logo" onerror="this.src='https://via.placeholder.com/150?text=Taste+%26+See+Logo'">
                 </div>
-                <!-- Mobile Close Sidebar Button -->
-                <button id="close-sidebar-btn" class="md:hidden text-gray-400 hover:text-darkBlue p-2 cursor-pointer">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="p-3 border-b border-gray-100">
-                <div class="relative">
-                    <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input type="text" id="conversation-search" placeholder="Search chats or orders..." class="w-full pl-10 pr-4 py-2 bg-softGray border border-transparent rounded-xl text-sm focus:outline-none focus:bg-white focus:border-primary transition shadow-inner">
+                <div class="brand-title">
+                    <h2>Taste & See</h2>
+                    <span class="brand-subtitle">Cinnamon Buns</span>
                 </div>
             </div>
 
-            <!-- Conversations / Orders List -->
-            <div id="conversations-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
-                <!-- Dynamically populated via script.js -->
-            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-target="dashboard">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-target="messages">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Messages</span>
+                    <span class="badge-count" id="nav-unread-badge">1</span>
+                </a>
+                <a href="#" class="nav-item" data-target="orders">
+                    <i class="fa-solid fa-box-open"></i>
+                    <span>My Orders</span>
+                </a>
+                <a href="#" class="nav-item" data-target="history">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Delivery History</span>
+                </a>
+                <a href="#" class="nav-item" data-target="notifications">
+                    <i class="fa-solid fa-bell"></i>
+                    <span>Notifications</span>
+                </a>
+                <a href="#" class="nav-item" data-target="settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="nav-item" data-target="help">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>Help & Support</span>
+                </a>
+            </nav>
 
-            <!-- User Footer Profile -->
-            <div class="p-3.5 border-t border-gray-200 bg-paleBlue/30 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
-                        <img id="current-user-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" alt="User Avatar" class="w-10 h-10 rounded-full object-cover border border-primary">
-                        <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                    </div>
-                    <div>
-                        <h4 id="current-user-name" class="text-sm font-bold text-darkBlue leading-tight">Maria Santos</h4>
-                        <p id="current-user-role-label" class="text-xs text-gray-500">Customer • Order #TS-8492</p>
+            <div class="sidebar-footer">
+                <div class="user-profile-card">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" alt="Maria Santos" class="user-avatar">
+                    <div class="user-info">
+                        <span class="user-name">Maria Santos</span>
+                        <span class="user-role-badge"><i class="fa-solid fa-user"></i> Customer</span>
                     </div>
                 </div>
-                <button onclick="showDemoInfo()" class="text-gray-400 hover:text-darkBlue p-2 rounded-lg hover:bg-white/80 transition cursor-pointer" title="Demo Info">
-                    <i class="fa-solid fa-circle-info"></i>
-                </button>
             </div>
-
         </aside>
 
-        <!-- MAIN CHAT AREA -->
-        <main id="main-chat-area" class="flex-1 flex flex-col bg-white overflow-hidden relative">
+        <!-- Main Content Area -->
+        <main class="main-content">
             
-            <!-- Chat Header -->
-            <header class="h-16 px-4 md:px-6 border-b border-gray-200 flex items-center justify-between bg-white z-10 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <!-- Mobile Menu / Back Toggle -->
-                    <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-darkBlue p-2 -ml-2 cursor-pointer">
-                        <i class="fa-solid fa-bars text-lg"></i>
-                    </button>
-                    <!-- Active Contact Avatar & Info -->
-                    <div class="relative">
-                        <img id="active-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" alt="Support" class="w-10 h-10 rounded-full object-cover border border-primary">
-                        <span id="active-status-dot" class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 id="active-name" class="font-bold text-darkBlue text-base leading-tight">Taste & See Support</h2>
-                            <span id="active-badge" class="px-2 py-0.5 text-[10px] font-semibold bg-paleBlue text-darkBlue rounded-full">Online</span>
-                        </div>
-                        <p id="active-subtitle" class="text-xs text-gray-500 font-medium">Order #TS-8492 • <span class="text-green-600 font-semibold">Out for Delivery</span></p>
-                    </div>
+            <!-- Top Mobile Header -->
+            <header class="mobile-header">
+                <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle Sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="mobile-brand">
+                    <img src="assets/logo.png" alt="Logo" class="mobile-logo" onerror="this.src='https://via.placeholder.com/40?text=T%26S'">
+                    <span>Taste & See</span>
                 </div>
-
-                <!-- Header Actions -->
-                <div class="flex items-center gap-2">
-                    <button id="toggle-order-panel" class="px-3 py-1.5 bg-paleBlue hover:bg-primary/20 text-darkBlue font-semibold text-xs rounded-lg transition flex items-center gap-1.5 shadow-sm cursor-pointer">
-                        <i class="fa-solid fa-receipt text-darkBlue"></i>
-                        <span class="hidden sm:inline">Order Info</span>
-                    </button>
+                <div class="mobile-user">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Maria" class="user-avatar-sm">
                 </div>
             </header>
 
-            <!-- Chat Messages Scroll Area -->
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-gradient-to-b from-softGray/50 to-white">
-                <!-- Populated via script.js -->
-            </div>
-
-            <!-- Typing Indicator Area -->
-            <div id="typing-indicator" class="px-6 py-2 hidden items-center gap-2 text-xs text-gray-500 italic bg-white/80 border-t border-gray-100">
-                <div class="flex gap-1 items-center bg-gray-100 px-3 py-1.5 rounded-full">
-                    <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-                    <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-                    <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-                </div>
-                <span id="typing-text">Support is typing...</span>
-            </div>
-
-            <!-- Quick Replies Bar -->
-            <div id="quick-replies-container" class="px-4 py-2 bg-paleBlue/40 border-t border-gray-100 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-                <!-- Dynamically generated quick replies -->
-            </div>
-
-            <!-- Message Input Composer -->
-            <div class="p-3 md:p-4 bg-white border-t border-gray-200 shadow-lg">
-                <form id="message-form" onsubmit="handleSendMessage(event)" class="flex items-end gap-2 max-w-5xl mx-auto">
-                    <!-- Attachment button -->
-                    <button type="button" onclick="triggerAttachment()" class="p-2.5 text-gray-400 hover:text-darkBlue hover:bg-softGray rounded-xl transition flex-shrink-0 cursor-pointer" title="Attach image or pin">
-                        <i class="fa-solid fa-paperclip text-lg"></i>
-                    </button>
-                    <!-- Emoji button -->
-                    <button type="button" onclick="toggleEmojiPicker()" class="p-2.5 text-gray-400 hover:text-darkBlue hover:bg-softGray rounded-xl transition flex-shrink-0 relative cursor-pointer" title="Insert Emoji">
-                        <i class="fa-solid fa-face-smile text-lg"></i>
-                    </button>
-
-                    <!-- Textarea input -->
-                    <div class="flex-1 relative bg-softGray rounded-2xl border border-gray-200 focus-within:border-primary focus-within:bg-white transition">
-                        <textarea id="message-input" rows="1" placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)" class="w-full px-4 py-3 bg-transparent text-sm focus:outline-none resize-none max-h-32 text-bakeryDark placeholder-gray-400" onkeydown="handleInputKeyDown(event)"></textarea>
-                    </div>
-
-                    <!-- Send button -->
-                    <button type="submit" id="send-btn" class="bg-darkBlue hover:bg-primary text-white p-3 rounded-2xl transition shadow-md hover:shadow-lg flex-shrink-0 flex items-center justify-center w-11 h-11 cursor-pointer" title="Send Message">
-                        <i class="fa-solid fa-paper-plane text-sm"></i>
-                    </button>
-                </form>
-            </div>
-
-        </main>
-
-        <!-- RIGHT ORDER INFO PANEL -->
-        <aside id="order-panel" class="w-full md:w-80 lg:w-96 bg-white border-l border-gray-200 flex flex-col z-20 absolute md:relative inset-y-0 right-0 transition-transform duration-300 transform translate-x-full md:translate-x-0 shadow-xl md:shadow-none hidden md:flex">
-            
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-paleBlue/50">
-                <h3 class="font-bold text-darkBlue text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-box-open text-primary"></i> Order & Delivery Details
-                </h3>
-                <button onclick="toggleOrderPanel()" class="md:hidden text-gray-400 hover:text-darkBlue p-1.5 cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <!-- Dashboard / Messaging Workspace -->
+            <div class="workspace">
                 
-                <!-- Order Summary Card -->
-                <div class="bg-softGray rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span id="panel-order-no" class="text-xs font-bold px-2.5 py-1 bg-darkBlue text-white rounded-lg">#TS-8492</span>
-                        <span id="panel-order-status" class="text-xs font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">Out for Delivery</span>
-                    </div>
-
-                    <div class="space-y-1.5 pt-1 text-xs">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Customer:</span>
-                            <span id="panel-customer-name" class="font-semibold text-darkBlue">Maria Santos</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Store Contact:</span>
-                            <span class="font-semibold text-darkBlue">Taste & See Bakery</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Est. Arrival:</span>
-                            <span id="panel-est-time" class="font-bold text-darkBlue bg-paleBlue px-2 py-0.5 rounded">12:45 PM (Today)</span>
-                        </div>
-                        <div class="pt-1 border-t border-gray-200">
-                            <span class="text-gray-500 block mb-1">Delivery Address:</span>
-                            <p id="panel-address" class="font-medium text-darkBlue leading-snug">Blk 4 Lot 12, Sunnyville Subd, Cebu City</p>
+                <!-- Conversation List Panel -->
+                <section class="conversation-panel" id="conversation-panel">
+                    <div class="panel-header">
+                        <h2>Messages</h2>
+                        <div class="panel-actions">
+                            <button class="icon-btn" id="new-chat-btn" title="New Message"><i class="fa-solid fa-pen-to-square"></i></button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Items Ordered -->
-                <div class="space-y-2">
-                    <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wider">Order Items</h4>
-                    <div id="panel-items-list" class="space-y-2">
-                        <!-- Populated via script.js -->
-                    </div>
-                </div>
-
-                <!-- Delivery Status Timeline -->
-                <div class="space-y-3 pt-2">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wider">Live Status Timeline</h4>
-                        <span class="text-[10px] text-gray-400">Real-time update</span>
+                    
+                    <div class="search-container">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="conversation-search" placeholder="Search rider or order #..." autocomplete="off">
                     </div>
 
-                    <div id="timeline-container" class="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                        <!-- Timeline steps populated by script.js -->
+                    <div class="filter-chips">
+                        <button class="chip active" data-filter="all">All</button>
+                        <button class="chip" data-filter="unread">Unread</button>
+                        <button class="chip" data-filter="active">Active Delivery</button>
                     </div>
-                </div>
+
+                    <div class="conversation-list" id="conversation-list">
+                        <!-- Populated dynamically via Python / PyScript -->
+                    </div>
+                </section>
+
+                <!-- Active Chat Window -->
+                <section class="chat-window" id="chat-window">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="chat-partner-info">
+                            <button id="back-to-conversations" class="icon-btn mobile-only"><i class="fa-solid fa-arrow-left"></i></button>
+                            <div class="avatar-wrapper">
+                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150" alt="John Reyes" class="partner-avatar" id="header-avatar">
+                                <span class="status-dot online"></span>
+                            </div>
+                            <div class="partner-text">
+                                <h3 id="header-partner-name">John Reyes</h3>
+                                <span class="partner-status" id="header-partner-status">Assigned Delivery Rider • Online</span>
+                            </div>
+                        </div>
+                        <div class="chat-actions">
+                            <div class="order-badge-pill" id="header-order-badge">
+                                <i class="fa-solid fa-box"></i> TSB-2026-001
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm" id="toggle-drawer-btn">
+                                <i class="fa-solid fa-truck-fast"></i> Track Order
+                            </button>
+                            <button class="icon-btn" id="chat-options-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Messages Scroll Area -->
+                    <div class="messages-container" id="messages-container">
+                        <!-- Populated dynamically via Python / PyScript -->
+                    </div>
+
+                    <!-- Typing Indicator -->
+                    <div class="typing-indicator-box hidden" id="typing-indicator">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" class="msg-avatar-xs" alt="John">
+                        <div class="typing-bubble">
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                        <span class="typing-text">John is typing...</span>
+                    </div>
+
+                    <!-- Quick Replies Toolbar -->
+                    <div class="quick-replies-bar" id="quick-replies-bar">
+                        <button class="quick-chip" data-text="Hi! What is the exact status of my order?">What is my order status?</button>
+                        <button class="quick-chip" data-text="How long until my order arrives?">How long until arrival?</button>
+                        <button class="quick-chip" data-text="Please call me when you arrive at the gate.">Call me upon arrival</button>
+                        <button class="quick-chip" data-text="Please leave my order at the front desk/gate.">Leave at gate</button>
+                        <button class="quick-chip" data-text="Thank you so much! 😊">Thank you!</button>
+                    </div>
+
+                    <!-- Message Composer -->
+                    <div class="message-composer">
+                        <button class="icon-btn" id="attachment-btn" title="Attach file"><i class="fa-solid fa-paperclip"></i></button>
+                        <button class="icon-btn" id="emoji-btn" title="Insert Emoji"><i class="fa-regular fa-face-smile"></i></button>
+                        
+                        <div class="input-wrapper">
+                            <textarea id="message-input" placeholder="Type your message to John..." rows="1" maxlength="500"></textarea>
+                            <span class="char-counter" id="char-counter">0/500</span>
+                        </div>
+
+                        <button class="btn-send" id="send-btn" disabled title="Send message">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Order Details & Delivery Tracker Drawer -->
+                <aside class="order-details-drawer" id="order-drawer">
+                    <div class="drawer-header">
+                        <h3><i class="fa-solid fa-box-open"></i> Order Details</h3>
+                        <button class="icon-btn" id="close-drawer-btn"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div class="drawer-body">
+                        <div class="order-summary-card">
+                            <div class="order-id-row">
+                                <span class="label">Order Number</span>
+                                <span class="value font-weight-bold text-primary">TSB-2026-001</span>
+                            </div>
+                            <div class="order-item-desc">
+                                <img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=150" alt="Cinnamon Buns" class="item-thumb">
+                                <div class="item-info">
+                                    <h4>Box of 6 Classic Cinnamon Buns</h4>
+                                    <p>Extra cream cheese frosting, warm caramel drizzle</p>
+                                    <span class="item-price">₱480.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="delivery-progress-section">
+                            <h4>Delivery Progress</h4>
+                            <div class="stepper">
+                                <div class="step completed">
+                                    <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+                                    <div class="step-content">
+                                        <h5>Order Confirmed</h5>
+                                        <span>10:00 AM • Paid via GCash</span>
+                                    </div>
+                                </div>
+                                <div class="step completed">
+                                    <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+                                    <div class="step-content">
+                                        <h5>Preparing Your Order</h5>
+                                        <span>10:15 AM • Freshly baked</span>
+                                    </div>
+                                </div>
+                                <div class="step completed">
+                                    <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+                                    <div class="step-content">
+                                        <h5>Ready for Pickup</h5>
+                                        <span>10:25 AM • Boxed securely</span>
+                                    </div>
+                                </div>
+                                <div class="step completed">
+                                    <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+                                    <div class="step-content">
+                                        <h5>Rider Assigned</h5>
+                                        <span>10:28 AM • John Reyes</span>
+                                    </div>
+                                </div>
+                                <div class="step active">
+                                    <div class="step-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                                    <div class="step-content">
+                                        <h5>Out for Delivery</h5>
+                                        <span>10:30 AM • On the way</span>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-icon"><i class="fa-solid fa-house-chimney"></i></div>
+                                    <div class="step-content">
+                                        <h5>Delivered</h5>
+                                        <span>Estimated 10:55 AM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="delivery-info-card">
+                            <h4><i class="fa-solid fa-location-dot"></i> Delivery Address</h4>
+                            <p class="address-text">Tower 2, Grand Residences, Gov. M. Cuenco Ave, Cebu City</p>
+                            <span class="delivery-notes"><i class="fa-solid fa-note-sticky"></i> Note: Please ring doorbell at unit 4B.</span>
+                        </div>
+
+                        <div class="rider-info-card">
+                            <h4><i class="fa-solid fa-id-card"></i> Assigned Rider</h4>
+                            <div class="rider-card-row">
+                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" alt="John" class="rider-avatar-lg">
+                                <div class="rider-details">
+                                    <h5>John Reyes</h5>
+                                    <p><i class="fa-solid fa-star text-warning"></i> 4.9 (320 deliveries)</p>
+                                    <p><i class="fa-solid fa-motorcycle"></i> Honda Beat (Plate: ABC-1234)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
 
             </div>
-
-        </aside>
-
+        </main>
     </div>
 
-    <!-- Emoji Picker Modal -->
-    <div id="emoji-modal" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-xs hidden items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-4 w-full max-w-xs animate-fade-in border border-gray-100">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
-                <h4 class="font-bold text-darkBlue text-sm">Select an Emoji</h4>
-                <button onclick="toggleEmojiPicker()" class="text-gray-400 hover:text-darkBlue cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="grid grid-cols-6 gap-2 text-xl text-center">
-                <button onclick="insertEmoji('😊')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">😊</button>
-                <button onclick="insertEmoji('😋')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">😋</button>
-                <button onclick="insertEmoji('🤤')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🤤</button>
-                <button onclick="insertEmoji('👍')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">👍</button>
-                <button onclick="insertEmoji('❤️')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">❤️</button>
-                <button onclick="insertEmoji('🛵')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🛵</button>
-                <button onclick="insertEmoji('🏠')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🏠</button>
-                <button onclick="insertEmoji('⏰')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">⏰</button>
-                <button onclick="insertEmoji('🙏')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🙏</button>
-                <button onclick="insertEmoji('🧁')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🧁</button>
-                <button onclick="insertEmoji('✨')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">✨</button>
-                <button onclick="insertEmoji('🎉')" class="p-2 hover:bg-softGray rounded-lg transition cursor-pointer">🎉</button>
-            </div>
-        </div>
-    </div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
 
-    <!-- Demo Info Modal -->
-    <div id="demo-info-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs hidden items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-fade-in border border-gray-100 space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div class="flex items-center gap-2.5">
-                    <img src="assets/logo.png" onerror="this.src='https://placehold.co/100x100/69C5DF/FFFFFF?text=Logo'" alt="Logo" class="w-8 h-8 rounded-full border border-primary object-cover">
-                    <h3 class="font-bold text-darkBlue text-base">Taste & See Customer Help</h3>
-                </div>
-                <button onclick="showDemoInfo()" class="text-gray-400 hover:text-darkBlue cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="text-xs text-gray-600 space-y-2.5 leading-relaxed">
-                <p><strong class="text-darkBlue">Welcome to Taste & See Cinnamon Buns Messaging!</strong> Chat directly with our bakery support team regarding your order.</p>
-                <ul class="list-disc pl-4 space-y-1.5">
-                    <li><strong>Live Chat & Quick Replies:</strong> Send messages instantly or click quick-reply chips for order inquiries.</li>
-                    <li><strong>Order Tracking:</strong> Monitor real-time status updates through the timeline (Order Confirmed → Preparing → Out for Delivery → Arrived → Delivered).</li>
-                    <li><strong>Sound Notifications:</strong> Toggle notification sounds on/off using the top announcement bar.</li>
-                </ul>
-            </div>
-            <div class="pt-3 border-t border-gray-100 flex justify-end">
-                <button onclick="showDemoInfo()" class="px-4 py-2 bg-darkBlue hover:bg-primary text-white text-xs font-semibold rounded-xl transition shadow-sm cursor-pointer">Got it, let's explore!</button>
-            </div>
-        </div>
-    </div>
+    <!-- UI Interaction Controller -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const orderDrawer = document.getElementById('order-drawer');
+            const toggleDrawerBtn = document.getElementById('toggle-drawer-btn');
+            const closeDrawerBtn = document.getElementById('close-drawer-btn');
+            const backToConversationsBtn = document.getElementById('back-to-conversations');
+            const conversationPanel = document.getElementById('conversation-panel');
+            const chatWindow = document.getElementById('chat-window');
 
-    <!-- Application JavaScript Script -->
-    <script src="script.js"></script>
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('mobile-open');
+                });
+            }
+
+            if (toggleDrawerBtn) {
+                toggleDrawerBtn.addEventListener('click', () => {
+                    orderDrawer.classList.toggle('open');
+                });
+            }
+            if (closeDrawerBtn) {
+                closeDrawerBtn.addEventListener('click', () => {
+                    orderDrawer.classList.remove('open');
+                });
+            }
+
+            if (backToConversationsBtn) {
+                backToConversationsBtn.addEventListener('click', () => {
+                    conversationPanel.classList.remove('mobile-hidden');
+                    chatWindow.classList.remove('mobile-active');
+                });
+            }
+
+            document.querySelectorAll('.quick-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const text = chip.getAttribute('data-text');
+                    const input = document.getElementById('message-input');
+                    if (input) {
+                        input.value = text;
+                        input.dispatchEvent(new Event('input'));
+                        input.focus();
+                    }
+                });
+            });
+
+            const messageInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const charCounter = document.getElementById('char-counter');
+
+            if (messageInput) {
+                messageInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                    
+                    const len = this.value.length;
+                    if (charCounter) charCounter.textContent = `${len}/500`;
+
+                    if (sendBtn) {
+                        if (len > 0 && len <= 500) {
+                            sendBtn.removeAttribute('disabled');
+                        } else {
+                            sendBtn.setAttribute('disabled', 'true');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

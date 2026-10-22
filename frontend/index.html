@@ -331,8 +331,7 @@
         <div class="mt-2 space-y-2 text-sm leading-relaxed text-stone-600">
           <p><b class="text-stone-900">We do not offer in-house delivery.</b> Book your preferred app — Grab, Lalamove, Maxim, or similar — and shoulder the delivery fee directly with the rider.</p>
           <p><b class="text-stone-900">Pickup time window:</b> strictly <b>10:00 AM – 2:00 PM</b> only.</p>
-          <p><b class="text-stone-900">Store pickup address:</b> 38 Edison Street, Lahug, Cebu City, Philippines.</p>
-          <p><b class="text-stone-900">Landmark:</b> 41 Edison Street., Lahug, Cebu City, Philippines.</p>
+          <p><b class="text-stone-900">Store pickup address:</b> 41 Edison Street, Lahug, Cebu City, Philippines.</p>
         </div>
       </div>
     </div>
@@ -824,7 +823,7 @@ function openCheckout(){
 function showDeliveryPolicy(){
   const dialog=$("deliveryPolicyDlg");
   if(dialog && typeof dialog.showModal==="function"){ if(!dialog.open) dialog.showModal(); }
-  else alert("We do not offer in-house delivery. Book Grab, Lalamove, Maxim, or your preferred rider app and pay the delivery fee directly. Pickup is strictly 10:00 AM – 2:00 PM. Store: 38 Edison Street, Lahug, Cebu City. Landmark: 41 Edison Street., Lahug, Cebu City.");
+  else alert("We do not offer in-house delivery. Book Grab, Lalamove, Maxim, or your preferred rider app and pay the delivery fee directly. Pickup is strictly 10:00 AM - 2:00 PM. Store: 41 Edison Street, Lahug, Cebu City.");
 }
 function coKind(){
   const delivery=document.querySelector('input[name="kind"]:checked').value==="delivery";

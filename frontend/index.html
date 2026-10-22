@@ -234,7 +234,7 @@
         </div>
         <div class="rounded-2xl bg-sky-50 p-4 text-sm">
           <div class="font-black text-sky-900">Taste &amp; See</div>
-          <address class="mt-1 not-italic text-stone-600">38 Edison Street, Lahug<br>Cebu City, Philippines</address>
+          <address class="mt-1 not-italic text-stone-600">41 Edison Street, Lahug<br>Cebu City, Philippines</address>
         </div>
         <div class="flex flex-col gap-2">
           <a id="visitDirections" href="#" target="_blank" rel="noopener noreferrer" class="soft-button inline-flex min-h-11 items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-sky-700">Get directions in Google Maps</a>
@@ -244,7 +244,7 @@
         <div id="visitNotice" role="status" class="min-h-[1.25rem] text-xs text-stone-500"></div>
       </div>
       <div class="relative min-h-[320px] md:min-h-[460px]">
-        <div id="visitMap" class="absolute inset-0 z-0 bg-sky-50" aria-label="Map showing the Taste &amp; See store at 38 Edison Street, Lahug, Cebu City"></div>
+        <div id="visitMap" class="absolute inset-0 z-0 bg-sky-50" aria-label="Map showing the Taste &amp; See store at 41 Edison Street, Lahug, Cebu City"></div>
       </div>
     </div>
   </div>
@@ -342,7 +342,7 @@
 
 <script>
 (function(){
-  const PHYSICAL_STORE = { lat:10.331035, lng:123.905855, name:"Taste & See", address:"38 Edison Street, Lahug, Cebu City" };
+  const PHYSICAL_STORE = { lat:10.3331584, lng:123.9023988, name:"Taste & See", address:"41 Edison Street, Lahug, Cebu City" };
   const el = id => document.getElementById(id);
   const notice = text => { const n = el("visitNotice"); if(n) n.textContent = text; };
   const esc = v => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -432,7 +432,7 @@ let CATALOG = [];
 let boxes = [newBox()], menuFilter="all";
 let currentCustomer = null, momentsLoading = false;
 const MAX_BOXES = TasteSeeCheckout.MAX_BOXES; // UI cap only; the gateway and database enforce it.
-const STORE_LOCATION = { lat:10.3157, lng:123.8854 };
+const STORE_LOCATION = { lat:10.3331584, lng:123.9023988 };
 const CEBU_BOUNDS = { south:10.25, north:10.39, west:123.78, east:123.96 };
 let trackingLoading = false, trackingPollTimer = null, trackingMapInstances = {};
 function withinCebu(lat,lng){
@@ -536,6 +536,16 @@ async function refreshCustomerSession(){
   if(currentCustomer){
     if(currentCustomer.name) $("coName").value=currentCustomer.name;
     if(!$("coPhone").value.trim()) $("coPhone").value=currentCustomer.phone||"";
+    $("trackName").value="";
+    $("trackId").value="";
+    $("trackList").innerHTML="";
+    trackingRenderSignature=null;
+    if(restoreTrackingDetails()) await renderTracking();
+  } else {
+    $("trackName").value="";
+    $("trackId").value="";
+    $("trackList").innerHTML="";
+    trackingRenderSignature=null;
   }
   updateReceiptCustomer();
 }
@@ -867,9 +877,11 @@ async function placeOrder(){
     });
     boxes=[newBox()]; renderCart();
     toggleCart(false);
+    const code = String(order.id).slice(0,8);
     $("trackName").value = name;
-    $("trackId").value = String(order.id).slice(0,8);
-    alert(`Order received! #${String(order.id).slice(0,8)} — pickup is 10:00 AM – 2:00 PM. No online payment was collected.`);
+    $("trackId").value = code;
+    saveTrackingDetails(name, code);
+    alert(`Order received! #${code} — pickup is 10:00 AM – 2:00 PM. No online payment was collected.`);
     renderTracking();
   } catch(e){
     const known=["duplicate","slots_full","order_limit","empty","incomplete_box","blocked","unavailable"].includes(e.code);
@@ -881,6 +893,29 @@ async function placeOrder(){
 }
 const STATUS = { pending:"🕓 pending", baking:"🔥 baking", ready:"🔔 ready", out_for_delivery:"🛵 on the way", completed:"✅ completed", cancelled:"❌ cancelled" };
 let trackingRenderSignature = null;
+const TRACKING_STORAGE_PREFIX = "tastesee.tracking.";
+function trackingStorageKey(){
+  return currentCustomer?.id ? TRACKING_STORAGE_PREFIX + currentCustomer.id : null;
+}
+function saveTrackingDetails(name, code){
+  const key = trackingStorageKey();
+  if(!key || !code) return;
+  try{ localStorage.setItem(key, JSON.stringify({ name:name || "", code })); }catch(error){ console.warn("Could not remember the tracking details",error); }
+}
+function restoreTrackingDetails(){
+  const key = trackingStorageKey();
+  if(!key) return false;
+  try{
+    const saved = JSON.parse(localStorage.getItem(key) || "null");
+    if(!saved?.code) return false;
+    $("trackName").value = saved.name || currentCustomer?.name || "";
+    $("trackId").value = saved.code;
+    return true;
+  }catch(error){
+    console.warn("Could not restore the tracking details",error);
+    return false;
+  }
+}
 async function renderTracking(){
   if(trackingLoading) return;
   if(!currentCustomer){
@@ -899,6 +934,7 @@ async function renderTracking(){
   }
   try {
     const orders=(await TasteSeeDB.trackOrders(q,id)).slice(0,20);
+    if(orders.length) saveTrackingDetails(q,id);
     const active=orders.filter(order=>order.status==="out_for_delivery"&&order.kind==="delivery");
     const signature=orders.map(order=>`${order.id}:${order.status}`).join("|");
     if(signature!==trackingRenderSignature){
